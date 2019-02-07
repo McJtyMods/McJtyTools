@@ -72,13 +72,6 @@ minecraft {
 }
 
 dependencies {
-    deobfCompile "mezz.jei:jei_${jei_version}"
-    deobfCompile "mcp.mobius.waila:Hwyla:${waila_version}"
-    deobfCompile "mcjty.theoneprobe:TheOneProbe-${top_version}"
-    deobfCompile "cofh:RedstoneFlux:${redstoneflux_version}"
-    deobfCompile "net.darkhax.tesla:Tesla-1.12.2:1.0.63"
-
-    compile "li.cil.oc:OpenComputers:${oc_version}"
 }
 
 task deobfJar(type: Jar) {
