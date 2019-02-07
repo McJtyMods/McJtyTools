@@ -104,6 +104,11 @@ processResources
     }
 }
 
+jar {
+    manifest {
+        attributes("Maven-Artifact": "mcjtytools")
+    }
+}
 
 task("uploadJars", dependsOn: "reobf") {
     description = "uploads JARs"
