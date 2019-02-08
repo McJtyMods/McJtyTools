@@ -331,13 +331,13 @@ public class CommonRuleEvaluator {
             String biomename = biomes.get(0);
             checks.add((event,query) -> {
                 Biome biome = query.getWorld(event).getBiome(query.getPos(event));
-                return biomename.equals(biome.biomeName);
+                return biomename.equals(compatibility.getBiomeName(biome));
             });
         } else {
             Set<String> biomenames = new HashSet<>(biomes);
             checks.add((event,query) -> {
                 Biome biome = query.getWorld(event).getBiome(query.getPos(event));
-                return biomenames.contains(biome.biomeName);
+                return biomenames.contains(compatibility.getBiomeName(biome));
             });
         }
     }

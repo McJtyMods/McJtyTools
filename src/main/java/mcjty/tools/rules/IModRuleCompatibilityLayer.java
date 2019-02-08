@@ -4,6 +4,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.Biome;
 
 public interface IModRuleCompatibilityLayer {
 
@@ -64,4 +65,9 @@ public interface IModRuleCompatibilityLayer {
     boolean isWinter(World world);
 
     boolean isAutumn(World world);
+
+    // --------------------
+    // Specific methods to avoid AT issues in McJtyTools
+    // --------------------
+    String getBiomeName(Biome biome);
 }
