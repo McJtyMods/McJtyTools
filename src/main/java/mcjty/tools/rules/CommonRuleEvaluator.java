@@ -380,10 +380,7 @@ public class CommonRuleEvaluator {
                     Block block = query.getWorld(event).getBlockState(pos).getBlock();
                     ItemStack stack = new ItemStack(block);
                     int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
-                    if (isMatchingOreId(oreIDs, oreId)) {
-                        return true;
-                    }
-                    return false;
+                    return isMatchingOreId(oreIDs, oreId);
                 });
             } else {
                 checks.add((event, query) -> {
@@ -437,10 +434,7 @@ public class CommonRuleEvaluator {
                     Block block = query.getWorld(event).getBlockState(pos).getBlock();
                     ItemStack stack = new ItemStack(block);
                     int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
-                    if (isMatchingOreId(oreIDs, oreId)) {
-                        return true;
-                    }
-                    return false;
+                    return isMatchingOreId(oreIDs, oreId);
                 });
             } else {
                 checks.add((event, query) -> {
