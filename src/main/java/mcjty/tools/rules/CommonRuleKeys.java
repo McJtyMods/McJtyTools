@@ -75,4 +75,7 @@ public interface CommonRuleKeys {
     Key<String> ACTION_MOBNBT = Key.create(Type.JSON, "nbt");
     Key<Boolean> ACTION_ANGRY = Key.create(Type.BOOLEAN, "angry");
 
+    Key<Integer> ACTION_FIRE = Key.create(Type.INTEGER, "fire");
+    Key<Boolean> ACTION_CLEAR = Key.create(Type.BOOLEAN, "clear");
+    Key<String> ACTION_DAMAGE = Key.create(Type.STRING, "damage");
 }
