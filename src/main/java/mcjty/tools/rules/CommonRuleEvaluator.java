@@ -94,6 +94,9 @@ public class CommonRuleEvaluator {
         if (map.has(BLOCK)) {
             addBlocksCheck(map);
         }
+        if (map.has(BLOCKUP)) {
+            addBlocksCheckUp(map);
+        }
         if (map.has(BIOME)) {
             addBiomesCheck(map);
         }
@@ -397,6 +400,63 @@ public class CommonRuleEvaluator {
             Set<String> blocknames = new HashSet<>(blocks);
             checks.add((event,query) -> {
                 BlockPos pos = query.getValidBlockPos(event);
+                Block block = query.getWorld(event).getBlockState(pos).getBlock();
+                ItemStack stack = new ItemStack(block);
+                int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
+                ResourceLocation registryName = block.getRegistryName();
+                if (registryName == null) {
+                    return false;
+                }
+                String name = registryName.toString();
+                for (String blockname : blocknames) {
+                    if (blockname.startsWith("ore:")) {
+                        int oreId = OreDictionary.getOreID(blockname.substring(4));
+                        if (isMatchingOreId(oreIDs, oreId)) {
+                            return true;
+                        }
+                    } else {
+                        if (blockname.equals(name)) {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            });
+        }
+    }
+
+    private void addBlocksCheckUp(AttributeMap map) {
+        List<String> blocks = map.getList(BLOCKUP);
+        if (blocks.size() == 1) {
+            String blockname = blocks.get(0);
+            if (blockname.startsWith("ore:")) {
+                int oreId = OreDictionary.getOreID(blockname.substring(4));
+                checks.add((event, query) -> {
+                    BlockPos pos = query.getValidBlockPos(event).up();
+                    Block block = query.getWorld(event).getBlockState(pos).getBlock();
+                    ItemStack stack = new ItemStack(block);
+                    int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
+                    if (isMatchingOreId(oreIDs, oreId)) {
+                        return true;
+                    }
+                    return false;
+                });
+            } else {
+                checks.add((event, query) -> {
+                    BlockPos pos = query.getValidBlockPos(event).up();
+                    ResourceLocation registryName = query.getWorld(event).getBlockState(pos).getBlock().getRegistryName();
+                    if (registryName == null) {
+                        return false;
+                    }
+                    String name = registryName.toString();
+                    return blockname.equals(name);
+                });
+            }
+        } else {
+            Set<String> blocknames = new HashSet<>(blocks);
+            checks.add((event,query) -> {
+                BlockPos pos = query.getValidBlockPos(event).up();
                 Block block = query.getWorld(event).getBlockState(pos).getBlock();
                 ItemStack stack = new ItemStack(block);
                 int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);

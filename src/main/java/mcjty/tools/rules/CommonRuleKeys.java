@@ -22,6 +22,7 @@ public interface CommonRuleKeys {
     Key<String> TEMPCATEGORY = Key.create(Type.STRING, "tempcategory");
     Key<String> DIFFICULTY = Key.create(Type.STRING, "difficulty");
     Key<String> BLOCK = Key.create(Type.STRING, "block");
+    Key<String> BLOCKUP = Key.create(Type.STRING, "blockup");
     Key<String> BIOME = Key.create(Type.STRING, "biome");
     Key<String> BIOMETYPE = Key.create(Type.STRING, "biometype");
     Key<String> STRUCTURE = Key.create(Type.STRING, "structure");
