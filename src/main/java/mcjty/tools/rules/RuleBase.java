@@ -21,6 +21,7 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import org.apache.commons.lang3.StringUtils;
@@ -79,6 +80,7 @@ public class RuleBase<T extends RuleBase.EventGetter> {
     public interface EventGetter {
         EntityLivingBase getEntityLiving();
         World getWorld();
+        BlockPos getPosition();
     }
 
     protected void addActions(AttributeMap map) {
@@ -120,6 +122,9 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         }
         if (map.has(ACTION_FIRE)) {
             addFireAction(map);
+        }
+        if (map.has(ACTION_EXPLOSION)) {
+            addExplosionAction(map);
         }
         if (map.has(ACTION_CLEAR)) {
             addClearAction(map);
@@ -203,6 +208,30 @@ public class RuleBase<T extends RuleBase.EventGetter> {
             if (living != null) {
                 living.attackEntityFrom(DamageSource.ON_FIRE, 0.1f);
                 living.setFire(fireAction);
+            }
+        });
+    }
+
+    private void addExplosionAction(AttributeMap map) {
+        String fireAction = map.get(ACTION_EXPLOSION);
+        String[] split = StringUtils.split(fireAction, ",");
+        float strength = 1.0f;
+        boolean flaming = false;
+        boolean smoking = false;
+        try {
+            strength = Float.parseFloat(split[0]);
+            flaming = "1".equalsIgnoreCase(split[1]) || "true".equals(split[1].toLowerCase()) || "yes".equals(split[1].toLowerCase());
+            smoking = "1".equalsIgnoreCase(split[2]) || "true".equals(split[2].toLowerCase()) || "yes".equals(split[2].toLowerCase());
+        } catch (Exception ignore) {
+        }
+
+        float finalStrength = strength;
+        boolean finalFlaming = flaming;
+        boolean finalSmoking = smoking;
+        actions.add(event -> {
+            BlockPos pos = event.getPosition();
+            if (pos != null) {
+                event.getWorld().newExplosion(null, pos.getX()+.5, pos.getY()+.5, pos.getZ()+.5, finalStrength, finalFlaming, finalSmoking);
             }
         });
     }
