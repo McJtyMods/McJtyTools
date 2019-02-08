@@ -54,4 +54,25 @@ public interface CommonRuleKeys {
     Key<String> HEAD = Key.create(Type.STRING, "head");
     Key<String> BODY = Key.create(Type.STRING, "body");
     Key<String> CHARM = Key.create(Type.STRING, "charm");
+
+    // Outputs
+
+    Key<Float> ACTION_HEALTHMULTIPLY = Key.create(Type.FLOAT, "healthmultiply");
+    Key<Float> ACTION_HEALTHADD = Key.create(Type.FLOAT, "healthadd");
+    Key<Float> ACTION_SPEEDMULTIPLY = Key.create(Type.FLOAT, "speedmultiply");
+    Key<Float> ACTION_SPEEDADD = Key.create(Type.FLOAT, "speedadd");
+    Key<Float> ACTION_DAMAGEMULTIPLY = Key.create(Type.FLOAT, "damagemultiply");
+    Key<Float> ACTION_DAMAGEADD = Key.create(Type.FLOAT, "damageadd");
+    Key<Float> ACTION_SIZEMULTIPLY = Key.create(Type.FLOAT, "sizemultiply");
+    Key<Float> ACTION_SIZEADD = Key.create(Type.FLOAT, "sizeadd");
+
+    Key<String> ACTION_POTION = Key.create(Type.STRING, "potion");
+    Key<String> ACTION_HELDITEM = Key.create(Type.STRING, "helditem");
+    Key<String> ACTION_ARMORCHEST = Key.create(Type.STRING, "armorchest");
+    Key<String> ACTION_ARMORHELMET = Key.create(Type.STRING, "armorhelmet");
+    Key<String> ACTION_ARMORLEGS = Key.create(Type.STRING, "armorlegs");
+    Key<String> ACTION_ARMORBOOTS = Key.create(Type.STRING, "armorboots");
+    Key<String> ACTION_MOBNBT = Key.create(Type.JSON, "nbt");
+    Key<Boolean> ACTION_ANGRY = Key.create(Type.BOOLEAN, "angry");
+
 }
