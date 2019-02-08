@@ -1,4 +1,4 @@
-package mcjty.typed;
+package mcjty.tools.typed;
 
 
 import javax.annotation.Nonnull;

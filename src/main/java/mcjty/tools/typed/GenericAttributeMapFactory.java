@@ -1,8 +1,8 @@
-package mcjty.typed;
+package mcjty.tools.typed;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import mcjty.varia.JSonTools;
+import mcjty.tools.varia.JSonTools;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;

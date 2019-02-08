@@ -1,4 +1,4 @@
-package mcjty.varia;
+package mcjty.tools.varia;
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;

@@ -1,4 +1,4 @@
-package mcjty.varia;
+package mcjty.tools.varia;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
