@@ -2,6 +2,7 @@ package mcjty.tools.rules;
 
 import mcjty.tools.cache.StructureCache;
 import mcjty.tools.typed.AttributeMap;
+import mcjty.tools.typed.Key;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
@@ -20,16 +21,19 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import static mcjty.tools.rules.CommonRuleKeys.*;
 
 public class CommonRuleEvaluator {
 
-    private final List<BiFunction<Event, IEventQuery, Boolean>> checks = new ArrayList<>();
+    protected final List<BiFunction<Event, IEventQuery, Boolean>> checks = new ArrayList<>();
     private final Logger logger;
+    private final IModRuleCompatibilityLayer compatibility;
 
-    public CommonRuleEvaluator(AttributeMap map, Logger logger) {
+    public CommonRuleEvaluator(AttributeMap map, Logger logger, IModRuleCompatibilityLayer compatibility) {
         this.logger = logger;
+        this.compatibility = compatibility;
         addChecks(map);
     }
 
@@ -120,6 +124,120 @@ public class CommonRuleEvaluator {
 
         if (map.has(STRUCTURE)) {
             addStructureCheck(map);
+        }
+
+        if (map.has(SUMMER)) {
+            if (compatibility.hasSereneSeasons()) {
+                addSummerCheck(map);
+            } else {
+                logger.warn("Serene Seaons is missing: this test cannot work!");
+            }
+        }
+        if (map.has(WINTER)) {
+            if (compatibility.hasSereneSeasons()) {
+                addWinterCheck(map);
+            } else {
+                logger.warn("Serene Seaons is missing: this test cannot work!");
+            }
+        }
+        if (map.has(SPRING)) {
+            if (compatibility.hasSereneSeasons()) {
+                addSpringCheck(map);
+            } else {
+                logger.warn("Serene Seaons is missing: this test cannot work!");
+            }
+        }
+        if (map.has(AUTUMN)) {
+            if (compatibility.hasSereneSeasons()) {
+                addAutumnCheck(map);
+            } else {
+                logger.warn("Serene Seaons is missing: this test cannot work!");
+            }
+        }
+        if (map.has(GAMESTAGE)) {
+            if (compatibility.hasGameStages()) {
+                addGameStageCheck(map);
+            } else {
+                logger.warn("Game Stages is missing: the 'gamestage' test cannot work!");
+            }
+        }
+        if (map.has(INCITY)) {
+            if (compatibility.hasLostCities()) {
+                addInCityCheck(map);
+            } else {
+                logger.warn("The Lost Cities is missing: the 'incity' test cannot work!");
+            }
+        }
+        if (map.has(INSTREET)) {
+            if (compatibility.hasLostCities()) {
+                addInStreetCheck(map);
+            } else {
+                logger.warn("The Lost Cities is missing: the 'instreet' test cannot work!");
+            }
+        }
+        if (map.has(INSPHERE)) {
+            if (compatibility.hasLostCities()) {
+                addInSphereCheck(map);
+            } else {
+                logger.warn("The Lost Cities is missing: the 'insphere' test cannot work!");
+            }
+        }
+        if (map.has(INBUILDING)) {
+            if (compatibility.hasLostCities()) {
+                addInBuildingCheck(map);
+            } else {
+                logger.warn("The Lost Cities is missing: the 'inbuilding' test cannot work!");
+            }
+        }
+
+        if (map.has(AMULET)) {
+            if (compatibility.hasBaubles()) {
+                addBaubleCheck(map, AMULET, compatibility::getAmuletSlots);
+            } else {
+                logger.warn("Baubles is missing: this test cannot work!");
+            }
+        }
+        if (map.has(RING)) {
+            if (compatibility.hasBaubles()) {
+                addBaubleCheck(map, RING, compatibility::getRingSlots);
+            } else {
+                logger.warn("Baubles is missing: this test cannot work!");
+            }
+        }
+        if (map.has(BELT)) {
+            if (compatibility.hasBaubles()) {
+                addBaubleCheck(map, BELT, compatibility::getBeltSlots);
+            } else {
+                logger.warn("Baubles is missing: this test cannot work!");
+            }
+        }
+        if (map.has(TRINKET)) {
+            if (compatibility.hasBaubles()) {
+                addBaubleCheck(map, TRINKET, compatibility::getTrinketSlots);
+            } else {
+                logger.warn("Baubles is missing: this test cannot work!");
+            }
+        }
+        if (map.has(HEAD)) {
+            if (compatibility.hasBaubles()) {
+                addBaubleCheck(map, HEAD, compatibility::getHeadSlots);
+            } else {
+                logger.warn("Baubles is missing: this test cannot work!");
+            }
+        }
+        if (map.has(BODY)) {
+            if (compatibility.hasBaubles()) {
+                addBaubleCheck(map, BODY, compatibility::getBodySlots);
+            } else {
+                logger.warn("Baubles is missing: this test cannot work!");
+            }
+        }
+        if (map.has(CHARM)) {
+            if (compatibility.hasBaubles()) {
+                addBaubleCheck(map, CHARM, compatibility::getCharmSlots);
+            } else {
+                logger.warn("Baubles is missing: this test cannot work!");
+            }
         }
     }
 
@@ -511,4 +629,80 @@ public class CommonRuleEvaluator {
     }
 
 
+    private void addSummerCheck(AttributeMap map) {
+        Boolean s = map.get(SUMMER);
+        checks.add((event, query) -> s == compatibility.isSummer(query.getWorld(event)));
+    }
+
+    private void addWinterCheck(AttributeMap map) {
+        Boolean s = map.get(WINTER);
+        checks.add((event, query) -> s == compatibility.isWinter(query.getWorld(event)));
+    }
+
+    private void addSpringCheck(AttributeMap map) {
+        Boolean s = map.get(SPRING);
+        checks.add((event, query) -> s == compatibility.isSpring(query.getWorld(event)));
+    }
+
+    private void addAutumnCheck(AttributeMap map) {
+        Boolean s = map.get(AUTUMN);
+        checks.add((event, query) -> s == compatibility.isAutumn(query.getWorld(event)));
+    }
+
+    private void addGameStageCheck(AttributeMap map) {
+        String stage = map.get(GAMESTAGE);
+        checks.add((event, query) -> compatibility.hasGameStage(query.getPlayer(event), stage));
+    }
+
+    private void addInCityCheck(AttributeMap map) {
+        if (map.get(INCITY)) {
+            checks.add((event,query) -> compatibility.isCity(query, event));
+        } else {
+            checks.add((event,query) -> !compatibility.isCity(query, event));
+        }
+    }
+
+    private void addInStreetCheck(AttributeMap map) {
+        if (map.get(INSTREET)) {
+            checks.add((event,query) -> compatibility.isStreet(query, event));
+        } else {
+            checks.add((event,query) -> !compatibility.isStreet(query, event));
+        }
+    }
+
+    private void addInSphereCheck(AttributeMap map) {
+        if (map.get(INSPHERE)) {
+            checks.add((event,query) -> compatibility.inSphere(query, event));
+        } else {
+            checks.add((event,query) -> !compatibility.inSphere(query, event));
+        }
+    }
+
+    private void addInBuildingCheck(AttributeMap map) {
+        if (map.get(INBUILDING)) {
+            checks.add((event,query) -> compatibility.isBuilding(query, event));
+        } else {
+            checks.add((event,query) -> !compatibility.isBuilding(query, event));
+        }
+    }
+
+    public void addBaubleCheck(AttributeMap map, Key<String> key, Supplier<int[]> slotSupplier) {
+        List<Item> items = getItems(map.getList(key));
+        checks.add((event,query) -> {
+            EntityPlayer player = query.getPlayer(event);
+            if (player != null) {
+                for (int slot : slotSupplier.get()) {
+                    ItemStack stack = compatibility.getBaubleStack(player, slot);
+                    if (!stack.isEmpty()) {
+                        for (Item item : items) {
+                            if (stack.getItem() == item) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        });
+    }
 }
