@@ -10,7 +10,10 @@ public interface IEventQuery<T> {
 
     World getWorld(T o);
 
+    /// Get the position directly from the event
     BlockPos getPos(T o);
+    /// Get the position from the event corrected to correspond to a position more likely containing a valid block
+    BlockPos getValidBlockPos(T o);
 
     int getY(T o);
 

@@ -373,8 +373,8 @@ public class CommonRuleEvaluator {
             if (blockname.startsWith("ore:")) {
                 int oreId = OreDictionary.getOreID(blockname.substring(4));
                 checks.add((event, query) -> {
-                    BlockPos pos = query.getPos(event);
-                    Block block = query.getWorld(event).getBlockState(pos.down()).getBlock();
+                    BlockPos pos = query.getValidBlockPos(event);
+                    Block block = query.getWorld(event).getBlockState(pos).getBlock();
                     ItemStack stack = new ItemStack(block);
                     int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
                     if (isMatchingOreId(oreIDs, oreId)) {
@@ -384,8 +384,8 @@ public class CommonRuleEvaluator {
                 });
             } else {
                 checks.add((event, query) -> {
-                    BlockPos pos = query.getPos(event);
-                    ResourceLocation registryName = query.getWorld(event).getBlockState(pos.down()).getBlock().getRegistryName();
+                    BlockPos pos = query.getValidBlockPos(event);
+                    ResourceLocation registryName = query.getWorld(event).getBlockState(pos).getBlock().getRegistryName();
                     if (registryName == null) {
                         return false;
                     }
@@ -396,8 +396,8 @@ public class CommonRuleEvaluator {
         } else {
             Set<String> blocknames = new HashSet<>(blocks);
             checks.add((event,query) -> {
-                BlockPos pos = query.getPos(event);
-                Block block = query.getWorld(event).getBlockState(pos.down()).getBlock();
+                BlockPos pos = query.getValidBlockPos(event);
+                Block block = query.getWorld(event).getBlockState(pos).getBlock();
                 ItemStack stack = new ItemStack(block);
                 int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
                 ResourceLocation registryName = block.getRegistryName();
