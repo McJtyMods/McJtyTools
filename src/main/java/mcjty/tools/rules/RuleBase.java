@@ -22,6 +22,7 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import org.apache.commons.lang3.StringUtils;
@@ -79,6 +80,7 @@ public class RuleBase<T extends RuleBase.EventGetter> {
 
     public interface EventGetter {
         EntityLivingBase getEntityLiving();
+        EntityPlayer getPlayer();
         World getWorld();
         BlockPos getPosition();
     }
@@ -132,6 +134,9 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         if (map.has(ACTION_DAMAGE)) {
             addDoDamageAction(map);
         }
+        if (map.has(ACTION_MESSAGE)) {
+            addDoMessageAction(map);
+        }
     }
 
     private static Map<String, DamageSource> damageMap = null;
@@ -184,6 +189,19 @@ public class RuleBase<T extends RuleBase.EventGetter> {
             EntityLivingBase living = event.getEntityLiving();
             if (living != null) {
                 living.attackEntityFrom(source, finalAmount);
+            }
+        });
+    }
+
+    private void addDoMessageAction(AttributeMap map) {
+        String message = map.get(ACTION_MESSAGE);
+        actions.add(event -> {
+            EntityPlayer player = event.getPlayer();
+            if (player == null) {
+                player = event.getWorld().getClosestPlayerToEntity(event.getEntityLiving(), 100);
+            }
+            if (player != null) {
+                player.sendStatusMessage(new TextComponentString(message), false);
             }
         });
     }

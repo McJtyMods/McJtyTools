@@ -389,7 +389,7 @@ public class CommonRuleEvaluator {
                     if (registryName == null) {
                         return false;
                     }
-                    String name = registryName.toString();
+                    String name = registryName.toString(); // @todo: compare on resourcelocation instead of string!
                     return blockname.equals(name);
                 });
             }
