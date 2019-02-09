@@ -137,6 +137,9 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         if (map.has(ACTION_MESSAGE)) {
             addDoMessageAction(map);
         }
+        if (map.has(ACTION_GIVE)) {
+            addGiveAction(map);
+        }
     }
 
     private static Map<String, DamageSource> damageMap = null;
@@ -204,6 +207,32 @@ public class RuleBase<T extends RuleBase.EventGetter> {
                 player.sendStatusMessage(new TextComponentString(message), false);
             }
         });
+    }
+
+
+    private void addGiveAction(AttributeMap map) {
+        final List<Pair<Float, ItemStack>> items = getItemsWeighted(map.getList(ACTION_GIVE));
+        if (items.isEmpty()) {
+            return;
+        }
+        if (items.size() == 1) {
+            ItemStack item = items.get(0).getRight();
+            actions.add(event -> {
+                EntityPlayer player = event.getPlayer();
+                if (player != null) {
+                    player.inventory.addItemStackToInventory(item.copy());
+                }
+            });
+        } else {
+            final float total = getTotal(items);
+            actions.add(event -> {
+                EntityPlayer player = event.getPlayer();
+                if (player != null) {
+                    ItemStack item = getRandomItem(items, total);
+                    player.inventory.addItemStackToInventory(item.copy());
+                }
+            });
+        }
     }
 
 
