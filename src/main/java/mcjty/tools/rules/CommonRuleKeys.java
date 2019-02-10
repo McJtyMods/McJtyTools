@@ -70,15 +70,15 @@ public interface CommonRuleKeys {
     Key<Float> ACTION_SIZEADD = Key.create(Type.FLOAT, "sizeadd");
 
     Key<String> ACTION_POTION = Key.create(Type.STRING, "potion");
-    Key<String> ACTION_HELDITEM = Key.create(Type.STRING, "helditem");
-    Key<String> ACTION_ARMORCHEST = Key.create(Type.STRING, "armorchest");
-    Key<String> ACTION_ARMORHELMET = Key.create(Type.STRING, "armorhelmet");
-    Key<String> ACTION_ARMORLEGS = Key.create(Type.STRING, "armorlegs");
-    Key<String> ACTION_ARMORBOOTS = Key.create(Type.STRING, "armorboots");
+    Key<String> ACTION_HELDITEM = Key.create(Type.JSON, "helditem");
+    Key<String> ACTION_ARMORCHEST = Key.create(Type.JSON, "armorchest");
+    Key<String> ACTION_ARMORHELMET = Key.create(Type.JSON, "armorhelmet");
+    Key<String> ACTION_ARMORLEGS = Key.create(Type.JSON, "armorlegs");
+    Key<String> ACTION_ARMORBOOTS = Key.create(Type.JSON, "armorboots");
     Key<String> ACTION_MOBNBT = Key.create(Type.JSON, "nbt");
     Key<Boolean> ACTION_ANGRY = Key.create(Type.BOOLEAN, "angry");
     Key<String> ACTION_MESSAGE = Key.create(Type.STRING, "message");
-    Key<String> ACTION_GIVE = Key.create(Type.STRING, "give");
+    Key<String> ACTION_GIVE = Key.create(Type.JSON, "give");
 
     Key<String> ACTION_EXPLOSION = Key.create(Type.STRING, "explosion");
     Key<Integer> ACTION_FIRE = Key.create(Type.INTEGER, "fire");

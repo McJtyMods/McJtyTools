@@ -1,5 +1,8 @@
 package mcjty.tools.rules;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
 import mcjty.tools.varia.Tools;
@@ -48,12 +51,25 @@ public class RuleBase<T extends RuleBase.EventGetter> {
 
     protected List<Pair<Float, ItemStack>> getItemsWeighted(List<String> itemNames) {
         List<Pair<Float, ItemStack>> items = new ArrayList<>();
-        for (String name : itemNames) {
-            Pair<Float, ItemStack> pair = Tools.parseStackWithFactor(name, logger);
-            if (pair.getValue().isEmpty()) {
-                logger.log(Level.ERROR, "Unknown item '" + name + "'!");
+        for (String json : itemNames) {
+            JsonParser parser = new JsonParser();
+            JsonElement element = parser.parse(json);
+            if (element.isJsonPrimitive()) {
+                String name = element.getAsString();
+                Pair<Float, ItemStack> pair = Tools.parseStackWithFactor(name, logger);
+                if (pair.getValue().isEmpty()) {
+                    logger.log(Level.ERROR, "Unknown item '" + name + "'!");
+                } else {
+                    items.add(pair);
+                }
+            } else if (element.isJsonObject()) {
+                JsonObject obj = element.getAsJsonObject();
+                Pair<Float, ItemStack> pair = Tools.parseStackWithFactor(obj, logger);
+                if (pair != null) {
+                    items.add(pair);
+                }
             } else {
-                items.add(pair);
+                logger.log(Level.ERROR, "Item description '" + json + "' is not valid!");
             }
         }
         return items;
@@ -321,19 +337,6 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         }
     }
 
-
-    protected List<ItemStack> getItems(List<String> itemNames) {
-        List<ItemStack> items = new ArrayList<>();
-        for (String name : itemNames) {
-            ItemStack stack = Tools.parseStack(name, logger);
-            if (stack.isEmpty()) {
-                logger.log(Level.ERROR, "Unknown item '" + name + "'!");
-            } else {
-                items.add(stack);
-            }
-        }
-        return items;
-    }
 
     private void addHealthAction(AttributeMap map) {
         float m = map.has(ACTION_HEALTHMULTIPLY) ? map.get(ACTION_HEALTHMULTIPLY) : 1;

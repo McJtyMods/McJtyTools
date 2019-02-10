@@ -1,5 +1,6 @@
 package mcjty.tools.varia;
 
+import com.google.gson.JsonObject;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.JsonToNBT;
@@ -87,6 +88,18 @@ public class Tools {
         return Pair.of(1.0f, parseStack(name, logger));
     }
 
+    public static Pair<Float, ItemStack> parseStackWithFactor(JsonObject obj, Logger logger) {
+        float factor = 1.0f;
+        if (obj.has("factor")) {
+            factor = obj.get("factor").getAsFloat();
+        }
+        ItemStack stack = parseStack(obj, logger);
+        if (stack == null) {
+            return null;
+        }
+        return Pair.of(factor, stack);
+    }
+
     public static ItemStack parseStack(String name, Logger logger) {
         if (name.contains("/")) {
             String[] split = StringUtils.split(name, "/");
@@ -106,6 +119,31 @@ public class Tools {
         } else {
             return parseStackNoNBT(name, logger);
         }
+    }
+
+    public static ItemStack parseStack(JsonObject obj, Logger logger) {
+        String name = obj.get("item").getAsString();
+        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
+        if (item == null) {
+            logger.log(Level.ERROR, "Unknown item '" + name + "'!");
+            return null;
+        }
+        ItemStack stack = new ItemStack(item);
+        if (obj.has("damage")) {
+            stack.setItemDamage(obj.get("damage").getAsInt());
+        }
+        if (obj.has("nbt")) {
+            String nbt = obj.get("nbt").toString();
+            NBTTagCompound tag = null;
+            try {
+                tag = JsonToNBT.getTagFromJson(nbt);
+            } catch (NBTException e) {
+                logger.log(Level.ERROR, "Error parsing json '" + nbt + "'!");
+                return ItemStack.EMPTY;
+            }
+            stack.setTagCompound(tag);
+        }
+        return stack;
     }
 
     private static ItemStack parseStackNoNBT(String name, Logger logger) {
