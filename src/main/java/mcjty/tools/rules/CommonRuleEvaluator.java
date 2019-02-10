@@ -1,5 +1,6 @@
 package mcjty.tools.rules;
 
+import com.google.common.base.Optional;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -9,6 +10,8 @@ import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
 import mcjty.tools.varia.Tools;
 import net.minecraft.block.Block;
+import net.minecraft.block.properties.IProperty;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.Item;
@@ -380,55 +383,104 @@ public class CommonRuleEvaluator {
 
     private static final int[] EMPTYINTS = new int[0];
 
+    private <T extends Comparable<T>> IBlockState set(IBlockState state, IProperty<T> property, String value) {
+        Optional<T> optionalValue = property.parseValue(value);
+        if (optionalValue.isPresent()) {
+            return state.withProperty(property, optionalValue.get());
+        } else {
+            return state;
+        }
+    }
+
+    private Predicate<IBlockState> parseBlock(String json) {
+        JsonParser parser = new JsonParser();
+        JsonElement element = parser.parse(json);
+        if (element.isJsonPrimitive()) {
+            String blockname = element.getAsString();
+            if (blockname.startsWith("ore:")) {
+                int oreId = OreDictionary.getOreID(blockname.substring(4));
+                return state -> isMatchingOreDict(oreId, state.getBlock());
+            } else {
+                Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(blockname));
+                if (block == null) {
+                    logger.log(Level.ERROR, "Block '" + blockname + "' is not valid!");
+                    return null;
+                }
+                return state -> state.getBlock() == block;
+            }
+        } else if (element.isJsonObject()) {
+            JsonObject obj = element.getAsJsonObject();
+            if (obj.has("ore")) {
+                int oreId = OreDictionary.getOreID(obj.get("ore").getAsString());
+                return state -> isMatchingOreDict(oreId, state.getBlock());
+            } else if (obj.has("block")) {
+                String blockname = obj.get("block").getAsString();
+                Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(blockname));
+                if (block == null) {
+                    logger.log(Level.ERROR, "Block '" + blockname + "' is not valid!");
+                    return null;
+                }
+                if (obj.has("properties")) {
+                    IBlockState blockState = block.getDefaultState();
+                    JsonArray propArray = obj.get("properties").getAsJsonArray();
+                    for (JsonElement el : propArray) {
+                        JsonObject propObj = el.getAsJsonObject();
+                        String name = propObj.get("name").getAsString();
+                        String value = propObj.get("value").getAsString();
+                        for (IProperty<?> key : blockState.getPropertyKeys()) {
+                            if (name.equals(key.getName())) {
+                                blockState = set(blockState, key, value);
+                            }
+                        }
+                    }
+                    IBlockState finalBlockState = blockState;
+                    return state -> state == finalBlockState;
+                } else {
+                    return state -> state.getBlock() == block;
+                }
+            }
+        } else {
+            logger.log(Level.ERROR, "Block description '" + json + "' is not valid!");
+        }
+        return null;
+    }
+
+    private boolean isMatchingOreDict(int oreId, Block block) {
+        ItemStack stack = new ItemStack(block);
+        int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
+        return isMatchingOreId(oreIDs, oreId);
+    }
+
     private void addBlocksCheck(AttributeMap map) {
         List<String> blocks = map.getList(BLOCK);
         if (blocks.size() == 1) {
-            String blockname = blocks.get(0);
-            if (blockname.startsWith("ore:")) {
-                int oreId = OreDictionary.getOreID(blockname.substring(4));
+            String json = blocks.get(0);
+            Predicate<IBlockState> blockMatcher = parseBlock(json);
+            if (blockMatcher != null) {
                 checks.add((event, query) -> {
                     BlockPos pos = query.getValidBlockPos(event);
-                    Block block = query.getWorld(event).getBlockState(pos).getBlock();
-                    ItemStack stack = new ItemStack(block);
-                    int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
-                    return isMatchingOreId(oreIDs, oreId);
-                });
-            } else {
-                checks.add((event, query) -> {
-                    BlockPos pos = query.getValidBlockPos(event);
-                    ResourceLocation registryName = query.getWorld(event).getBlockState(pos).getBlock().getRegistryName();
-                    if (registryName == null) {
-                        return false;
-                    }
-                    String name = registryName.toString(); // @todo: compare on resourcelocation instead of string!
-                    return blockname.equals(name);
+                    IBlockState state = query.getWorld(event).getBlockState(pos);
+                    return blockMatcher.test(state);
                 });
             }
         } else {
-            Set<String> blocknames = new HashSet<>(blocks);
+            List<Predicate<IBlockState>> blockMatchers = new ArrayList<>();
+            for (String block : blocks) {
+                Predicate<IBlockState> blockMatcher = parseBlock(block);
+                if (blockMatcher == null) {
+                    return;
+                }
+                blockMatchers.add(blockMatcher);
+            }
+
             checks.add((event,query) -> {
                 BlockPos pos = query.getValidBlockPos(event);
-                Block block = query.getWorld(event).getBlockState(pos).getBlock();
-                ItemStack stack = new ItemStack(block);
-                int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
-                ResourceLocation registryName = block.getRegistryName();
-                if (registryName == null) {
-                    return false;
-                }
-                String name = registryName.toString();
-                for (String blockname : blocknames) {
-                    if (blockname.startsWith("ore:")) {
-                        int oreId = OreDictionary.getOreID(blockname.substring(4));
-                        if (isMatchingOreId(oreIDs, oreId)) {
-                            return true;
-                        }
-                    } else {
-                        if (blockname.equals(name)) {
-                            return true;
-                        }
+                IBlockState state = query.getWorld(event).getBlockState(pos);
+                for (Predicate<IBlockState> matcher : blockMatchers) {
+                    if (matcher.test(state)) {
+                        return true;
                     }
                 }
-
                 return false;
             });
         }
@@ -443,9 +495,7 @@ public class CommonRuleEvaluator {
                 checks.add((event, query) -> {
                     BlockPos pos = query.getValidBlockPos(event).up();
                     Block block = query.getWorld(event).getBlockState(pos).getBlock();
-                    ItemStack stack = new ItemStack(block);
-                    int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
-                    return isMatchingOreId(oreIDs, oreId);
+                    return isMatchingOreDict(oreId, block);
                 });
             } else {
                 checks.add((event, query) -> {
