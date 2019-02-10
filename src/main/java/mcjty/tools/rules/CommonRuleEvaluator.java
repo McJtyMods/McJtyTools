@@ -1,26 +1,37 @@
 package mcjty.tools.rules;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import mcjty.tools.cache.StructureCache;
 import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
+import mcjty.tools.varia.Tools;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EnumDifficulty;
 import net.minecraft.world.biome.Biome;
 import net.minecraftforge.common.BiomeDictionary;
+import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.fml.common.eventhandler.Event;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.oredict.OreDictionary;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static mcjty.tools.rules.CommonRuleKeys.*;
@@ -570,47 +581,199 @@ public class CommonRuleEvaluator {
         return true;
     }
 
-    protected List<Item> getItems(List<String> itemNames) {
-        List<Item> items = new ArrayList<>();
-        for (String name : itemNames) {
-            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
-            if (item == null) {
-                logger.log(Level.ERROR, "Unknown item '" + name + "'!");
+    private Predicate<Integer> getExpression(String expression) {
+        try {
+            if (expression.startsWith(">=")) {
+                int amount = Integer.parseInt(expression.substring(2));
+                return i -> i >= amount;
+            }
+            if (expression.startsWith(">")) {
+                int amount = Integer.parseInt(expression.substring(1));
+                return i -> i > amount;
+            }
+            if (expression.startsWith("<=")) {
+                int amount = Integer.parseInt(expression.substring(2));
+                return i -> i <= amount;
+            }
+            if (expression.startsWith("<")) {
+                int amount = Integer.parseInt(expression.substring(1));
+                return i -> i < amount;
+            }
+            if (expression.startsWith("=")) {
+                int amount = Integer.parseInt(expression.substring(1));
+                return i -> i == amount;
+            }
+            if (expression.startsWith("!=") || expression.startsWith("<>")) {
+                int amount = Integer.parseInt(expression.substring(2));
+                return i -> i != amount;
+            }
+
+            if (expression.contains("-")) {
+                String[] split = StringUtils.split(expression, "-");
+                int amount1 = Integer.parseInt(split[0]);
+                int amount2 = Integer.parseInt(split[1]);
+                return i -> i >= amount1 && i <= amount2;
+            }
+
+            int amount = Integer.parseInt(expression);
+            return i -> i == amount;
+        } catch (NumberFormatException e) {
+            logger.log(Level.ERROR, "Bad expression '" + expression + "'!");
+            return null;
+        }
+    }
+
+    private Predicate<Integer> getExpression(JsonElement element) {
+        if (element.isJsonPrimitive()) {
+            if (element.getAsJsonPrimitive().isNumber()) {
+                int amount = element.getAsInt();
+                return i -> i == amount;
             } else {
-                items.add(item);
+                return getExpression(element.getAsString());
+            }
+        } else {
+            logger.log(Level.ERROR, "Bad expression!");
+            return null;
+        }
+    }
+
+    private Predicate<ItemStack> getMatcher(String name) {
+        ItemStack stack = Tools.parseStack(name, logger);
+        if (!stack.isEmpty()) {
+            // Stack matching
+            if (name.contains("/") && name.contains("@")) {
+                return s -> ItemStack.areItemsEqual(s, stack) && ItemStack.areItemStackTagsEqual(s, stack);
+            } else if (name.contains("/")) {
+                return s -> ItemStack.areItemsEqualIgnoreDurability(s, stack) && ItemStack.areItemStackTagsEqual(s, stack);
+            } else if (name.contains("@")) {
+                return s -> ItemStack.areItemsEqual(s, stack);
+            } else {
+                return s -> s.getItem() == stack.getItem();
+            }
+        }
+        return null;
+    }
+
+    private Predicate<ItemStack> getMatcher(JsonObject obj) {
+        String name = obj.get("item").getAsString();
+        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
+        if (item == null) {
+            logger.log(Level.ERROR, "Unknown item '" + name + "'!");
+            return null;
+        }
+        if (obj.has("damage") && obj.has("nbt")) {
+            Predicate<Integer> damage = getExpression(obj.get("damage"));
+            if (damage == null) {
+                return null;
+            }
+            List<Predicate<NBTTagCompound>> nbtMatchers = getNbtMatchers(obj);
+            if (nbtMatchers == null) return null;
+            return s -> s.getItem() == item && damage.test(s.getItemDamage()) && nbtMatchers.stream().allMatch(p -> p.test(s.getTagCompound()));
+        } else if (obj.has("damage")) {
+            Predicate<Integer> damage = getExpression(obj.get("damage"));
+            if (damage == null) {
+                return null;
+            }
+            return s -> s.getItem() == item && damage.test(s.getItemDamage());
+        } else if (obj.has("nbt")) {
+            List<Predicate<NBTTagCompound>> nbtMatchers = getNbtMatchers(obj);
+            if (nbtMatchers == null) return null;
+            return s -> s.getItem() == item && nbtMatchers.stream().allMatch(p -> p.test(s.getTagCompound()));
+        } else {
+            return s -> s.getItem() == item;
+        }
+    }
+
+    private List<Predicate<NBTTagCompound>> getNbtMatchers(JsonObject obj) {
+        JsonArray nbtArray = obj.getAsJsonArray("nbt");
+        return getNbtMatchers(nbtArray);
+    }
+
+    private List<Predicate<NBTTagCompound>> getNbtMatchers(JsonArray nbtArray) {
+        List<Predicate<NBTTagCompound>> nbtMatchers = new ArrayList<>();
+        for (JsonElement element : nbtArray) {
+            JsonObject o = element.getAsJsonObject();
+            String tag = o.get("tag").getAsString();
+            if (o.has("contains")) {
+                List<Predicate<NBTTagCompound>> subMatchers = getNbtMatchers(o.getAsJsonArray("contains"));
+                nbtMatchers.add(tagCompound -> {
+                    if (tagCompound != null) {
+                        NBTTagList list = tagCompound.getTagList(tag, Constants.NBT.TAG_COMPOUND);
+                        for (NBTBase base : list) {
+                            for (Predicate<NBTTagCompound> matcher : subMatchers) {
+                                if (matcher.test((NBTTagCompound) base)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    return false;
+                });
+            } else {
+                Predicate<Integer> nbt = getExpression(o.get("value"));
+                if (nbt == null) {
+                    return null;
+                }
+                nbtMatchers.add(tagCompound -> nbt.test(tagCompound.getInteger(tag)));
+            }
+
+        }
+        return nbtMatchers;
+    }
+
+
+    protected List<Predicate<ItemStack>> getItems(List<String> itemNames) {
+        List<Predicate<ItemStack>> items = new ArrayList<>();
+        for (String json : itemNames) {
+            JsonParser parser = new JsonParser();
+            JsonElement element = parser.parse(json);
+            if (element.isJsonPrimitive()) {
+                String name = element.getAsString();
+                Predicate<ItemStack> matcher = getMatcher(name);
+                if (matcher != null) {
+                    items.add(matcher);
+                }
+            } else if (element.isJsonObject()) {
+                JsonObject obj = element.getAsJsonObject();
+                Predicate<ItemStack> matcher = getMatcher(obj);
+                if (matcher != null) {
+                    items.add(matcher);
+                }
+            } else {
+                logger.log(Level.ERROR, "Item description '" + json + "' is not valid!");
             }
         }
         return items;
     }
 
     public void addHelmetCheck(AttributeMap map) {
-        List<Item> items = getItems(map.getList(HELMET));
+        List<Predicate<ItemStack>> items = getItems(map.getList(HELMET));
         addArmorCheck(items, EntityEquipmentSlot.HEAD);
     }
 
     public void addChestplateCheck(AttributeMap map) {
-        List<Item> items = getItems(map.getList(CHESTPLATE));
+        List<Predicate<ItemStack>> items = getItems(map.getList(CHESTPLATE));
         addArmorCheck(items, EntityEquipmentSlot.CHEST);
     }
 
     public void addLeggingsCheck(AttributeMap map) {
-        List<Item> items = getItems(map.getList(LEGGINGS));
+        List<Predicate<ItemStack>> items = getItems(map.getList(LEGGINGS));
         addArmorCheck(items, EntityEquipmentSlot.LEGS);
     }
 
     public void addBootsCheck(AttributeMap map) {
-        List<Item> items = getItems(map.getList(BOOTS));
+        List<Predicate<ItemStack>> items = getItems(map.getList(BOOTS));
         addArmorCheck(items, EntityEquipmentSlot.FEET);
     }
 
-    private void addArmorCheck(List<Item> items, EntityEquipmentSlot slot) {
+    private void addArmorCheck(List<Predicate<ItemStack>> items, EntityEquipmentSlot slot) {
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
                 ItemStack armorItem = player.getItemStackFromSlot(slot);
                 if (!armorItem.isEmpty()) {
-                    for (Item item : items) {
-                        if (armorItem.getItem() == item) {
+                    for (Predicate<ItemStack> item : items) {
+                        if (item.test(armorItem)) {
                             return true;
                         }
                     }
@@ -621,14 +784,14 @@ public class CommonRuleEvaluator {
     }
 
     public void addHeldItemCheck(AttributeMap map) {
-        List<Item> items = getItems(map.getList(HELDITEM));
+        List<Predicate<ItemStack>> items = getItems(map.getList(HELDITEM));
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
                 ItemStack mainhand = player.getHeldItemMainhand();
                 if (!mainhand.isEmpty()) {
-                    for (Item item : items) {
-                        if (mainhand.getItem() == item) {
+                    for (Predicate<ItemStack> item : items) {
+                        if (item.test(mainhand)) {
                             return true;
                         }
                     }
@@ -639,14 +802,14 @@ public class CommonRuleEvaluator {
     }
 
     public void addOffHandItemCheck(AttributeMap map) {
-        List<Item> items = getItems(map.getList(OFFHANDITEM));
+        List<Predicate<ItemStack>> items = getItems(map.getList(OFFHANDITEM));
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
                 ItemStack offhand = player.getHeldItemOffhand();
                 if (!offhand.isEmpty()) {
-                    for (Item item : items) {
-                        if (offhand.getItem() == item) {
+                    for (Predicate<ItemStack> item : items) {
+                        if (item.test(offhand)) {
                             return true;
                         }
                     }
@@ -657,22 +820,22 @@ public class CommonRuleEvaluator {
     }
 
     public void addBothHandsItemCheck(AttributeMap map) {
-        List<Item> items = getItems(map.getList(BOTHHANDSITEM));
+        List<Predicate<ItemStack>> items = getItems(map.getList(BOTHHANDSITEM));
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
                 ItemStack offhand = player.getHeldItemOffhand();
                 if (!offhand.isEmpty()) {
-                    for (Item item : items) {
-                        if (offhand.getItem() == item) {
+                    for (Predicate<ItemStack> item : items) {
+                        if (item.test(offhand)) {
                             return true;
                         }
                     }
                 }
                 ItemStack mainhand = player.getHeldItemMainhand();
                 if (!mainhand.isEmpty()) {
-                    for (Item item : items) {
-                        if (mainhand.getItem() == item) {
+                    for (Predicate<ItemStack> item : items) {
+                        if (item.test(mainhand)) {
                             return true;
                         }
                     }
@@ -741,15 +904,15 @@ public class CommonRuleEvaluator {
     }
 
     public void addBaubleCheck(AttributeMap map, Key<String> key, Supplier<int[]> slotSupplier) {
-        List<Item> items = getItems(map.getList(key));
+        List<Predicate<ItemStack>> items = getItems(map.getList(key));
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
                 for (int slot : slotSupplier.get()) {
                     ItemStack stack = compatibility.getBaubleStack(player, slot);
                     if (!stack.isEmpty()) {
-                        for (Item item : items) {
-                            if (stack.getItem() == item) {
+                        for (Predicate<ItemStack> item : items) {
+                            if (item.test(stack)) {
                                 return true;
                             }
                         }

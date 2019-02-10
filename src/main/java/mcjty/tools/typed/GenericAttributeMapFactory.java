@@ -38,7 +38,7 @@ public class GenericAttributeMapFactory {
                 } else if (type == Type.STRING) {
                     transformer = JsonElement::getAsString;
                 } else if (type == Type.JSON) {
-                    transformer = e -> e.toString();
+                    transformer = JsonElement::toString;
                 } else {
                     transformer = e -> "INVALID";
                 }

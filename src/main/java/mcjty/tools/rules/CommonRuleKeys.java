@@ -28,13 +28,13 @@ public interface CommonRuleKeys {
     Key<String> STRUCTURE = Key.create(Type.STRING, "structure");
     Key<Integer> DIMENSION = Key.create(Type.INTEGER, "dimension");
 
-    Key<String> HELMET = Key.create(Type.STRING, "helmet");
-    Key<String> CHESTPLATE = Key.create(Type.STRING, "chestplate");
-    Key<String> LEGGINGS = Key.create(Type.STRING, "leggings");
-    Key<String> BOOTS = Key.create(Type.STRING, "boots");
-    Key<String> HELDITEM = Key.create(Type.STRING, "helditem");
-    Key<String> OFFHANDITEM = Key.create(Type.STRING, "offhanditem");
-    Key<String> BOTHHANDSITEM = Key.create(Type.STRING, "bothhandsitem");
+    Key<String> HELMET = Key.create(Type.JSON, "helmet");
+    Key<String> CHESTPLATE = Key.create(Type.JSON, "chestplate");
+    Key<String> LEGGINGS = Key.create(Type.JSON, "leggings");
+    Key<String> BOOTS = Key.create(Type.JSON, "boots");
+    Key<String> HELDITEM = Key.create(Type.JSON, "helditem");
+    Key<String> OFFHANDITEM = Key.create(Type.JSON, "offhanditem");
+    Key<String> BOTHHANDSITEM = Key.create(Type.JSON, "bothhandsitem");
 
     Key<Boolean> INCITY = Key.create(Type.BOOLEAN, "incity");
     Key<Boolean> INBUILDING = Key.create(Type.BOOLEAN, "inbuilding");
@@ -48,13 +48,13 @@ public interface CommonRuleKeys {
     Key<Boolean> SPRING = Key.create(Type.BOOLEAN, "spring");
     Key<Boolean> AUTUMN = Key.create(Type.BOOLEAN, "autumn");
 
-    Key<String> AMULET = Key.create(Type.STRING, "amulet");
-    Key<String> RING = Key.create(Type.STRING, "ring");
-    Key<String> BELT = Key.create(Type.STRING, "belt");
-    Key<String> TRINKET = Key.create(Type.STRING, "trinket");
-    Key<String> HEAD = Key.create(Type.STRING, "head");
-    Key<String> BODY = Key.create(Type.STRING, "body");
-    Key<String> CHARM = Key.create(Type.STRING, "charm");
+    Key<String> AMULET = Key.create(Type.JSON, "amulet");
+    Key<String> RING = Key.create(Type.JSON, "ring");
+    Key<String> BELT = Key.create(Type.JSON, "belt");
+    Key<String> TRINKET = Key.create(Type.JSON, "trinket");
+    Key<String> HEAD = Key.create(Type.JSON, "head");
+    Key<String> BODY = Key.create(Type.JSON, "body");
+    Key<String> CHARM = Key.create(Type.JSON, "charm");
 
     // Outputs
 
