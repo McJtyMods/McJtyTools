@@ -79,6 +79,7 @@ public interface CommonRuleKeys {
     Key<Boolean> ACTION_ANGRY = Key.create(Type.BOOLEAN, "angry");
     Key<String> ACTION_MESSAGE = Key.create(Type.STRING, "message");
     Key<String> ACTION_GIVE = Key.create(Type.JSON, "give");
+    Key<String> ACTION_DROP = Key.create(Type.JSON, "drop");
 
     Key<String> ACTION_EXPLOSION = Key.create(Type.STRING, "explosion");
     Key<Integer> ACTION_FIRE = Key.create(Type.INTEGER, "fire");

@@ -10,6 +10,7 @@ import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.attributes.IAttributeInstance;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.monster.EntityEnderman;
 import net.minecraft.entity.monster.EntityPigZombie;
 import net.minecraft.entity.player.EntityPlayer;
@@ -96,8 +97,11 @@ public class RuleBase<T extends RuleBase.EventGetter> {
 
     public interface EventGetter {
         EntityLivingBase getEntityLiving();
+
         EntityPlayer getPlayer();
+
         World getWorld();
+
         BlockPos getPosition();
     }
 
@@ -156,9 +160,13 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         if (map.has(ACTION_GIVE)) {
             addGiveAction(map);
         }
+        if (map.has(ACTION_DROP)) {
+            addDropAction(map);
+        }
     }
 
     private static Map<String, DamageSource> damageMap = null;
+
     private static void addSource(DamageSource source) {
         damageMap.put(source.getDamageType(), source);
     }
@@ -236,7 +244,9 @@ public class RuleBase<T extends RuleBase.EventGetter> {
             actions.add(event -> {
                 EntityPlayer player = event.getPlayer();
                 if (player != null) {
-                    player.inventory.addItemStackToInventory(item.copy());
+                    if (!player.inventory.addItemStackToInventory(item.copy())) {
+                        player.entityDropItem(item.copy(), 1.05f);
+                    }
                 }
             });
         } else {
@@ -245,8 +255,34 @@ public class RuleBase<T extends RuleBase.EventGetter> {
                 EntityPlayer player = event.getPlayer();
                 if (player != null) {
                     ItemStack item = getRandomItem(items, total);
-                    player.inventory.addItemStackToInventory(item.copy());
+                    if (!player.inventory.addItemStackToInventory(item.copy())) {
+                        player.entityDropItem(item.copy(), 1.05f);
+                    }
                 }
+            });
+        }
+    }
+
+
+    private void addDropAction(AttributeMap map) {
+        final List<Pair<Float, ItemStack>> items = getItemsWeighted(map.getList(ACTION_DROP));
+        if (items.isEmpty()) {
+            return;
+        }
+        if (items.size() == 1) {
+            ItemStack item = items.get(0).getRight();
+            actions.add(event -> {
+                BlockPos pos = event.getPosition();
+                EntityItem entityItem = new EntityItem(event.getWorld(), pos.getX(), pos.getY(), pos.getZ(), item.copy());
+                event.getWorld().spawnEntity(entityItem);
+            });
+        } else {
+            final float total = getTotal(items);
+            actions.add(event -> {
+                BlockPos pos = event.getPosition();
+                ItemStack item = getRandomItem(items, total);
+                EntityItem entityItem = new EntityItem(event.getWorld(), pos.getX(), pos.getY(), pos.getZ(), item.copy());
+                event.getWorld().spawnEntity(entityItem);
             });
         }
     }
@@ -294,7 +330,7 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         actions.add(event -> {
             BlockPos pos = event.getPosition();
             if (pos != null) {
-                event.getWorld().newExplosion(null, pos.getX()+.5, pos.getY()+.5, pos.getZ()+.5, finalStrength, finalFlaming, finalSmoking);
+                event.getWorld().newExplosion(null, pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5, finalStrength, finalFlaming, finalSmoking);
             }
         });
     }
