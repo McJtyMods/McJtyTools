@@ -404,7 +404,7 @@ public class CommonRuleEvaluator {
             int offsetZ = offset.has("z") ? offset.get("z").getAsInt() : 0;
             return (event, query) -> query.getValidBlockPos(event).add(offsetX, offsetY, offsetZ);
         }
-        return null;
+        return (event, query) -> query.getValidBlockPos(event);
     }
 
     @Nullable
@@ -468,13 +468,9 @@ public class CommonRuleEvaluator {
     }
 
     private void addBlocksCheck(AttributeMap map) {
-        BiFunction<Event, IEventQuery, BlockPos> posFunction;
-        if (map.has(BLOCKOFFSET)) {
-            String json = map.get(BLOCKOFFSET);
-            posFunction = parseOffset(json);
-        } else {
-            posFunction = (event, query) -> query.getValidBlockPos(event);
-        }
+        BiFunction<Event, IEventQuery, BlockPos> posFunction = map.getOptional(BLOCKOFFSET)
+                .map(this::parseOffset)
+                .orElseGet(() -> (event, query) -> query.getValidBlockPos(event));
 
         List<String> blocks = map.getList(BLOCK);
         if (blocks.size() == 1) {

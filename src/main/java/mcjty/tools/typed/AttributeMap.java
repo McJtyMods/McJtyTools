@@ -25,6 +25,10 @@ public class AttributeMap {
         return (A) values.get(key);
     }
 
+    public <A> Optional<A> getOptional(@Nonnull Key<A> key) {
+        return Optional.ofNullable((A) values.get(key));
+    }
+
     public <A> void addList(@Nonnull Key<A> key, A value) {
         if (!values.containsKey(key)) {
             values.put(key, new ArrayList<>());
