@@ -67,6 +67,20 @@ public interface IModRuleCompatibilityLayer {
     boolean isAutumn(World world);
 
     // --------------------
+    // EnigmaScript
+    // --------------------
+
+    boolean hasEnigmaScript();
+
+    void setPlayerState(EntityPlayer player, String statename, String statevalue);
+
+    String getPlayerState(EntityPlayer player, String statename);
+
+    void setState(World world, String statename, String statevalue);
+
+    String getState(World world, String statename);
+
+    // --------------------
     // Specific methods to avoid AT issues in McJtyTools
     // --------------------
     String getBiomeName(Biome biome);

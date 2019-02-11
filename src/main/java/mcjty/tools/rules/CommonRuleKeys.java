@@ -56,6 +56,9 @@ public interface CommonRuleKeys {
     Key<String> BODY = Key.create(Type.JSON, "body");
     Key<String> CHARM = Key.create(Type.JSON, "charm");
 
+    Key<String> STATE = Key.create(Type.STRING, "state");
+    Key<String> PSTATE = Key.create(Type.STRING, "pstate");
+
     // Outputs
 
     Key<String> ACTION_RESULT = Key.create(Type.STRING, "result");
@@ -81,6 +84,8 @@ public interface CommonRuleKeys {
     Key<String> ACTION_GIVE = Key.create(Type.JSON, "give");
     Key<String> ACTION_DROP = Key.create(Type.JSON, "drop");
     Key<String> ACTION_SETBLOCK = Key.create(Type.JSON, "setblock");
+    Key<String> ACTION_SETSTATE = Key.create(Type.STRING, "setstate");
+    Key<String> ACTION_SETPSTATE = Key.create(Type.STRING, "setpstate");
 
     Key<String> ACTION_EXPLOSION = Key.create(Type.STRING, "explosion");
     Key<Integer> ACTION_FIRE = Key.create(Type.INTEGER, "fire");

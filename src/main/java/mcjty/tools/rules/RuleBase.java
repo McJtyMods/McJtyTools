@@ -109,7 +109,7 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         BlockPos getPosition();
     }
 
-    protected void addActions(AttributeMap map) {
+    protected void addActions(AttributeMap map, IModRuleCompatibilityLayer layer) {
         if (map.has(ACTION_HEALTHMULTIPLY) || map.has(ACTION_HEALTHADD)) {
             addHealthAction(map);
         }
@@ -169,6 +169,20 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         }
         if (map.has(ACTION_SETBLOCK)) {
             addSetBlockAction(map);
+        }
+        if (map.has(ACTION_SETSTATE)) {
+            if (layer.hasEnigmaScript()) {
+                addStateAction(map, layer);
+            } else {
+                logger.warn("EnigmaScript is missing: this action cannot work!");
+            }
+        }
+        if (map.has(ACTION_SETPSTATE)) {
+            if (layer.hasEnigmaScript()) {
+                addPStateAction(map, layer);
+            } else {
+                logger.warn("EnigmaScript is missing: this action cannot work!");
+            }
         }
     }
 
@@ -268,6 +282,40 @@ public class RuleBase<T extends RuleBase.EventGetter> {
                 }
             });
         }
+    }
+
+    private void addStateAction(AttributeMap map, IModRuleCompatibilityLayer layer) {
+        String s = map.get(ACTION_SETSTATE);
+        String[] split = StringUtils.split(s, '=');
+        String state;
+        String value;
+        try {
+            state = split[0];
+            value = split[1];
+        } catch (Exception e) {
+            logger.log(Level.ERROR, "Bad state=value specifier '" + s + "'!");
+            return;
+        }
+        String finalState = state;
+        String finalValue = value;
+        actions.add(event -> layer.setState(event.getWorld(), finalState, finalValue));
+    }
+
+    private void addPStateAction(AttributeMap map, IModRuleCompatibilityLayer layer) {
+        String s = map.get(ACTION_SETPSTATE);
+        String[] split = StringUtils.split(s, '=');
+        String state;
+        String value;
+        try {
+            state = split[0];
+            value = split[1];
+        } catch (Exception e) {
+            logger.log(Level.ERROR, "Bad state=value specifier '" + s + "'!");
+            return;
+        }
+        String finalState = state;
+        String finalValue = value;
+        actions.add(event -> layer.setPlayerState(event.getPlayer(), finalState, finalValue));
     }
 
     private void addSetBlockAction(AttributeMap map) {

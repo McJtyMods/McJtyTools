@@ -143,6 +143,21 @@ public class CommonRuleEvaluator {
             addStructureCheck(map);
         }
 
+        if (map.has(STATE)) {
+            if (compatibility.hasEnigmaScript()) {
+                addStateCheck(map);
+            } else {
+                logger.warn("EnigmaScript is missing: this test cannot work!");
+            }
+        }
+        if (map.has(PSTATE)) {
+            if (compatibility.hasEnigmaScript()) {
+                addPStateCheck(map);
+            } else {
+                logger.warn("EnigmaScript is missing: this test cannot work!");
+            }
+        }
+
         if (map.has(SUMMER)) {
             if (compatibility.hasSereneSeasons()) {
                 addSummerCheck(map);
@@ -863,6 +878,37 @@ public class CommonRuleEvaluator {
         });
     }
 
+    private void addStateCheck(AttributeMap map) {
+        String s = map.get(STATE);
+        String[] split = StringUtils.split(s, '=');
+        String state;
+        String value;
+        try {
+            state = split[0];
+            value = split[1];
+        } catch (Exception e) {
+            logger.log(Level.ERROR, "Bad state=value specifier '" + s + "'!");
+            return;
+        }
+
+        checks.add((event, query) -> value.equals(compatibility.getState(query.getWorld(event), state)));
+    }
+
+    private void addPStateCheck(AttributeMap map) {
+        String s = map.get(PSTATE);
+        String[] split = StringUtils.split(s, '=');
+        String state;
+        String value;
+        try {
+            state = split[0];
+            value = split[1];
+        } catch (Exception e) {
+            logger.log(Level.ERROR, "Bad state=value specifier '" + s + "'!");
+            return;
+        }
+
+        checks.add((event, query) -> value.equals(compatibility.getPlayerState(query.getPlayer(event), state)));
+    }
 
     private void addSummerCheck(AttributeMap map) {
         Boolean s = map.get(SUMMER);
