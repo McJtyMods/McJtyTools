@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.sun.istack.internal.NotNull;
 import mcjty.tools.cache.StructureCache;
 import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
@@ -32,6 +33,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
@@ -107,9 +109,6 @@ public class CommonRuleEvaluator {
         }
         if (map.has(BLOCK)) {
             addBlocksCheck(map);
-        }
-        if (map.has(BLOCKUP)) {
-            addBlocksCheckUp(map);
         }
         if (map.has(BIOME)) {
             addBiomesCheck(map);
@@ -392,6 +391,22 @@ public class CommonRuleEvaluator {
         }
     }
 
+    @NotNull
+    private BiFunction<Event, IEventQuery, BlockPos> parseOffset(String json) {
+        JsonParser parser = new JsonParser();
+        JsonElement element = parser.parse(json);
+        JsonObject obj = element.getAsJsonObject();
+        if (obj.has("offset")) {
+            JsonObject offset = obj.getAsJsonObject("offset");
+            int offsetX = offset.get("x").getAsInt();
+            int offsetY = offset.get("y").getAsInt();
+            int offsetZ = offset.get("z").getAsInt();
+            return (event, query) -> query.getValidBlockPos(event).add(offsetX, offsetY, offsetZ);
+        }
+        return null;
+    }
+
+    @Nullable
     private Predicate<IBlockState> parseBlock(String json) {
         JsonParser parser = new JsonParser();
         JsonElement element = parser.parse(json);
@@ -452,13 +467,21 @@ public class CommonRuleEvaluator {
     }
 
     private void addBlocksCheck(AttributeMap map) {
+        BiFunction<Event, IEventQuery, BlockPos> posFunction;
+        if (map.has(BLOCKOFFSET)) {
+            String json = map.get(BLOCKOFFSET);
+            posFunction = parseOffset(json);
+        } else {
+            posFunction = (event, query) -> query.getValidBlockPos(event);
+        }
+
         List<String> blocks = map.getList(BLOCK);
         if (blocks.size() == 1) {
             String json = blocks.get(0);
             Predicate<IBlockState> blockMatcher = parseBlock(json);
             if (blockMatcher != null) {
                 checks.add((event, query) -> {
-                    BlockPos pos = query.getValidBlockPos(event);
+                    BlockPos pos = posFunction.apply(event, query);
                     IBlockState state = query.getWorld(event).getBlockState(pos);
                     return blockMatcher.test(state);
                 });
@@ -474,65 +497,13 @@ public class CommonRuleEvaluator {
             }
 
             checks.add((event,query) -> {
-                BlockPos pos = query.getValidBlockPos(event);
+                BlockPos pos = posFunction.apply(event, query);
                 IBlockState state = query.getWorld(event).getBlockState(pos);
                 for (Predicate<IBlockState> matcher : blockMatchers) {
                     if (matcher.test(state)) {
                         return true;
                     }
                 }
-                return false;
-            });
-        }
-    }
-
-    private void addBlocksCheckUp(AttributeMap map) {
-        List<String> blocks = map.getList(BLOCKUP);
-        if (blocks.size() == 1) {
-            String blockname = blocks.get(0);
-            if (blockname.startsWith("ore:")) {
-                int oreId = OreDictionary.getOreID(blockname.substring(4));
-                checks.add((event, query) -> {
-                    BlockPos pos = query.getValidBlockPos(event).up();
-                    Block block = query.getWorld(event).getBlockState(pos).getBlock();
-                    return isMatchingOreDict(oreId, block);
-                });
-            } else {
-                checks.add((event, query) -> {
-                    BlockPos pos = query.getValidBlockPos(event).up();
-                    ResourceLocation registryName = query.getWorld(event).getBlockState(pos).getBlock().getRegistryName();
-                    if (registryName == null) {
-                        return false;
-                    }
-                    String name = registryName.toString();
-                    return blockname.equals(name);
-                });
-            }
-        } else {
-            Set<String> blocknames = new HashSet<>(blocks);
-            checks.add((event,query) -> {
-                BlockPos pos = query.getValidBlockPos(event).up();
-                Block block = query.getWorld(event).getBlockState(pos).getBlock();
-                ItemStack stack = new ItemStack(block);
-                int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
-                ResourceLocation registryName = block.getRegistryName();
-                if (registryName == null) {
-                    return false;
-                }
-                String name = registryName.toString();
-                for (String blockname : blocknames) {
-                    if (blockname.startsWith("ore:")) {
-                        int oreId = OreDictionary.getOreID(blockname.substring(4));
-                        if (isMatchingOreId(oreIDs, oreId)) {
-                            return true;
-                        }
-                    } else {
-                        if (blockname.equals(name)) {
-                            return true;
-                        }
-                    }
-                }
-
                 return false;
             });
         }
