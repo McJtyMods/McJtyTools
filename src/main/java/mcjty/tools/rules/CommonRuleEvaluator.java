@@ -53,9 +53,13 @@ public class CommonRuleEvaluator {
         addChecks(map);
     }
 
+    // Rules in this routine are sorted so that the more expensive checks are added later
     protected void addChecks(AttributeMap map) {
         if (map.has(RANDOM)) {
             addRandomCheck(map);
+        }
+        if (map.has(DIMENSION)) {
+            addDimensionCheck(map);
         }
         if (map.has(MINTIME)) {
             addMinTimeCheck(map);
@@ -78,9 +82,6 @@ public class CommonRuleEvaluator {
         }
         if (map.has(DIFFICULTY)) {
             addDifficultyCheck(map);
-        }
-        if (map.has(DIMENSION)) {
-            addDimensionCheck(map);
         }
 
         if (map.has(MINSPAWNDIST)) {
@@ -398,9 +399,9 @@ public class CommonRuleEvaluator {
         JsonObject obj = element.getAsJsonObject();
         if (obj.has("offset")) {
             JsonObject offset = obj.getAsJsonObject("offset");
-            int offsetX = offset.get("x").getAsInt();
-            int offsetY = offset.get("y").getAsInt();
-            int offsetZ = offset.get("z").getAsInt();
+            int offsetX = offset.has("x") ? offset.get("x").getAsInt() : 0;
+            int offsetY = offset.has("y") ? offset.get("y").getAsInt() : 0;
+            int offsetZ = offset.has("z") ? offset.get("z").getAsInt() : 0;
             return (event, query) -> query.getValidBlockPos(event).add(offsetX, offsetY, offsetZ);
         }
         return null;
