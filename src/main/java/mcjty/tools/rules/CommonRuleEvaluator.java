@@ -5,7 +5,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.sun.istack.internal.NotNull;
 import mcjty.tools.cache.StructureCache;
 import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
@@ -33,6 +32,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -392,7 +392,7 @@ public class CommonRuleEvaluator {
         }
     }
 
-    @NotNull
+    @Nonnull
     private BiFunction<Event, IEventQuery, BlockPos> parseOffset(String json) {
         JsonParser parser = new JsonParser();
         JsonElement element = parser.parse(json);
