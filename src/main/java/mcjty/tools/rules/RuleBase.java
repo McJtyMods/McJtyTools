@@ -1,11 +1,15 @@
 package mcjty.tools.rules;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
 import mcjty.tools.varia.Tools;
+import net.minecraft.block.Block;
+import net.minecraft.block.properties.IProperty;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
@@ -163,6 +167,9 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         if (map.has(ACTION_DROP)) {
             addDropAction(map);
         }
+        if (map.has(ACTION_SETBLOCK)) {
+            addSetBlockAction(map);
+        }
     }
 
     private static Map<String, DamageSource> damageMap = null;
@@ -263,6 +270,51 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         }
     }
 
+    private void addSetBlockAction(AttributeMap map) {
+        String json = map.get(ACTION_SETBLOCK);
+        JsonParser parser = new JsonParser();
+        JsonElement element = parser.parse(json);
+        if (element.isJsonPrimitive()) {
+            String blockname = element.getAsString();
+            Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(blockname));
+            if (block == null) {
+                logger.log(Level.ERROR, "Block '" + blockname + "' is not valid!");
+                return;
+            }
+            IBlockState state = block.getDefaultState();
+            actions.add(event -> event.getWorld().setBlockState(event.getPosition(), state, 3));
+        } else {
+            JsonObject obj = element.getAsJsonObject();
+            if (!obj.has("block")) {
+                logger.log(Level.ERROR, "Block is not valid!");
+                return;
+            }
+
+            String blockname = obj.get("block").getAsString();
+            Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(blockname));
+            if (block == null) {
+                logger.log(Level.ERROR, "Block '" + blockname + "' is not valid!");
+                return;
+            }
+            IBlockState state = block.getDefaultState();
+            if (obj.has("properties")) {
+                JsonArray propArray = obj.get("properties").getAsJsonArray();
+                for (JsonElement el : propArray) {
+                    JsonObject propObj = el.getAsJsonObject();
+                    String name = propObj.get("name").getAsString();
+                    String value = propObj.get("value").getAsString();
+                    for (IProperty<?> key : state.getPropertyKeys()) {
+                        if (name.equals(key.getName())) {
+                            state = CommonRuleEvaluator.set(state, key, value);
+                        }
+                    }
+                }
+            }
+            IBlockState finalState = state;
+            actions.add(event -> event.getWorld().setBlockState(event.getPosition(), finalState, 3));
+
+        }
+    }
 
     private void addDropAction(AttributeMap map) {
         final List<Pair<Float, ItemStack>> items = getItemsWeighted(map.getList(ACTION_DROP));

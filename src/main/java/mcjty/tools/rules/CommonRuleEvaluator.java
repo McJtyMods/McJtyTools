@@ -383,7 +383,7 @@ public class CommonRuleEvaluator {
 
     private static final int[] EMPTYINTS = new int[0];
 
-    private <T extends Comparable<T>> IBlockState set(IBlockState state, IProperty<T> property, String value) {
+    public static <T extends Comparable<T>> IBlockState set(IBlockState state, IProperty<T> property, String value) {
         Optional<T> optionalValue = property.parseValue(value);
         if (optionalValue.isPresent()) {
             return state.withProperty(property, optionalValue.get());
