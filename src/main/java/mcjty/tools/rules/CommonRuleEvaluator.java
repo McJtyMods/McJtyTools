@@ -8,6 +8,7 @@ import com.google.gson.JsonParser;
 import mcjty.tools.cache.StructureCache;
 import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
+import mcjty.tools.varia.LookAtTools;
 import mcjty.tools.varia.Tools;
 import net.minecraft.block.Block;
 import net.minecraft.block.properties.IProperty;
@@ -19,14 +20,22 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.EnumDifficulty;
+import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.energy.CapabilityEnergy;
+import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.fml.common.eventhandler.Event;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.oredict.OreDictionary;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
@@ -36,6 +45,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -412,38 +422,59 @@ public class CommonRuleEvaluator {
         JsonParser parser = new JsonParser();
         JsonElement element = parser.parse(json);
         JsonObject obj = element.getAsJsonObject();
+
+        int offsetX;
+        int offsetY;
+        int offsetZ;
+
         if (obj.has("offset")) {
             JsonObject offset = obj.getAsJsonObject("offset");
-            int offsetX = offset.has("x") ? offset.get("x").getAsInt() : 0;
-            int offsetY = offset.has("y") ? offset.get("y").getAsInt() : 0;
-            int offsetZ = offset.has("z") ? offset.get("z").getAsInt() : 0;
-            return (event, query) -> query.getValidBlockPos(event).add(offsetX, offsetY, offsetZ);
+            offsetX = offset.has("x") ? offset.get("x").getAsInt() : 0;
+            offsetY = offset.has("y") ? offset.get("y").getAsInt() : 0;
+            offsetZ = offset.has("z") ? offset.get("z").getAsInt() : 0;
+        } else {
+            offsetX = 0;
+            offsetY = 0;
+            offsetZ = 0;
         }
-        return (event, query) -> query.getValidBlockPos(event);
+
+        if (obj.has("look")) {
+            return (event, query) -> {
+                RayTraceResult result = LookAtTools.getMovingObjectPositionFromPlayer(query.getWorld(event), query.getPlayer(event), false);
+                if (result != null && result.typeOfHit == RayTraceResult.Type.BLOCK) {
+                    return result.getBlockPos().add(offsetX, offsetY, offsetZ);
+                } else {
+                    return query.getValidBlockPos(event).add(offsetX, offsetY, offsetZ);
+                }
+            };
+
+        }
+        return (event, query) -> query.getValidBlockPos(event).add(offsetX, offsetY, offsetZ);
     }
 
     @Nullable
-    private Predicate<IBlockState> parseBlock(String json) {
+    private BiPredicate<World, BlockPos> parseBlock(String json) {
         JsonParser parser = new JsonParser();
         JsonElement element = parser.parse(json);
         if (element.isJsonPrimitive()) {
             String blockname = element.getAsString();
             if (blockname.startsWith("ore:")) {
                 int oreId = OreDictionary.getOreID(blockname.substring(4));
-                return state -> isMatchingOreDict(oreId, state.getBlock());
+                return (world, pos) -> isMatchingOreDict(oreId, world.getBlockState(pos).getBlock());
             } else {
                 Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(blockname));
                 if (block == null) {
                     logger.log(Level.ERROR, "Block '" + blockname + "' is not valid!");
                     return null;
                 }
-                return state -> state.getBlock() == block;
+                return (world, pos) -> world.getBlockState(pos).getBlock() == block;
             }
         } else if (element.isJsonObject()) {
             JsonObject obj = element.getAsJsonObject();
+            BiPredicate<World, BlockPos> test;
             if (obj.has("ore")) {
                 int oreId = OreDictionary.getOreID(obj.get("ore").getAsString());
-                return state -> isMatchingOreDict(oreId, state.getBlock());
+                test = (world, pos) -> isMatchingOreDict(oreId, world.getBlockState(pos).getBlock());
             } else if (obj.has("block")) {
                 String blockname = obj.get("block").getAsString();
                 Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(blockname));
@@ -465,15 +496,70 @@ public class CommonRuleEvaluator {
                         }
                     }
                     IBlockState finalBlockState = blockState;
-                    return state -> state == finalBlockState;
+                    test = (world, pos) -> world.getBlockState(pos) == finalBlockState;
                 } else {
-                    return state -> state.getBlock() == block;
+                    test = (world, pos) -> world.getBlockState(pos).getBlock() == block;
+                }
+            } else {
+                test = (world, pos) -> true;
+            }
+
+            if (obj.has("mod")) {
+                String mod = obj.get("mod").getAsString();
+                BiPredicate<World, BlockPos> finalTest = test;
+                test = (world, pos) -> finalTest.test(world, pos) && mod.equals(world.getBlockState(pos).getBlock().getRegistryName().getResourceDomain());
+            }
+            if (obj.has("energy")) {
+                Predicate<Integer> energy = getExpression(obj.get("energy"));
+                if (energy != null) {
+                    EnumFacing side;
+                    if (obj.has("side")) {
+                        side = EnumFacing.byName(obj.get("side").getAsString().toLowerCase());
+                    } else {
+                        side = null;
+                    }
+                    BiPredicate<World, BlockPos> finalTest = test;
+                    test = (world, pos) -> finalTest.test(world, pos) && energy.test(getEnergy(world, pos, side));
                 }
             }
+            if (obj.has("contains")) {
+                EnumFacing side;
+                if (obj.has("side")) {
+                    side = EnumFacing.byName(obj.get("energyside").getAsString().toLowerCase());
+                } else {
+                    side = null;
+                }
+                List<Predicate<ItemStack>> items = getItems(obj.get("contains"));
+                BiPredicate<World, BlockPos> finalTest = test;
+                test = (world, pos) -> finalTest.test(world, pos) && contains(world, pos, side, items);
+            }
+
+            return test;
         } else {
             logger.log(Level.ERROR, "Block description '" + json + "' is not valid!");
         }
         return null;
+    }
+
+    protected List<Predicate<ItemStack>> getItems(JsonElement itemObj) {
+        List<Predicate<ItemStack>> items = new ArrayList<>();
+        if (itemObj.isJsonObject()) {
+            Predicate<ItemStack> matcher = getMatcher(itemObj.getAsJsonObject());
+            if (matcher != null) {
+                items.add(matcher);
+            }
+        } else if (itemObj.isJsonArray()) {
+            for (JsonElement element : itemObj.getAsJsonArray()) {
+                JsonObject obj = element.getAsJsonObject();
+                Predicate<ItemStack> matcher = getMatcher(obj);
+                if (matcher != null) {
+                    items.add(matcher);
+                }
+            }
+        } else {
+            logger.log(Level.ERROR, "Item description is not valid!");
+        }
+        return items;
     }
 
     private boolean isMatchingOreDict(int oreId, Block block) {
@@ -483,25 +569,28 @@ public class CommonRuleEvaluator {
     }
 
     private void addBlocksCheck(AttributeMap map) {
-        BiFunction<Event, IEventQuery, BlockPos> posFunction = map.getOptional(BLOCKOFFSET)
-                .map(this::parseOffset)
-                .orElseGet(() -> (event, query) -> query.getValidBlockPos(event));
+
+        BiFunction<Event, IEventQuery, BlockPos> posFunction;
+        if (map.has(BLOCKOFFSET)) {
+            posFunction = parseOffset(map.get(BLOCKOFFSET));
+        } else {
+            posFunction = (event, query) -> query.getValidBlockPos(event);
+        }
 
         List<String> blocks = map.getList(BLOCK);
         if (blocks.size() == 1) {
             String json = blocks.get(0);
-            Predicate<IBlockState> blockMatcher = parseBlock(json);
+            BiPredicate<World, BlockPos> blockMatcher = parseBlock(json);
             if (blockMatcher != null) {
                 checks.add((event, query) -> {
                     BlockPos pos = posFunction.apply(event, query);
-                    IBlockState state = query.getWorld(event).getBlockState(pos);
-                    return blockMatcher.test(state);
+                    return pos != null && blockMatcher.test(query.getWorld(event), pos);
                 });
             }
         } else {
-            List<Predicate<IBlockState>> blockMatchers = new ArrayList<>();
+            List<BiPredicate<World, BlockPos>> blockMatchers = new ArrayList<>();
             for (String block : blocks) {
-                Predicate<IBlockState> blockMatcher = parseBlock(block);
+                BiPredicate<World, BlockPos> blockMatcher = parseBlock(block);
                 if (blockMatcher == null) {
                     return;
                 }
@@ -510,10 +599,12 @@ public class CommonRuleEvaluator {
 
             checks.add((event,query) -> {
                 BlockPos pos = posFunction.apply(event, query);
-                IBlockState state = query.getWorld(event).getBlockState(pos);
-                for (Predicate<IBlockState> matcher : blockMatchers) {
-                    if (matcher.test(state)) {
-                        return true;
+                if (pos != null) {
+                    World world = query.getWorld(event);
+                    for (BiPredicate<World, BlockPos> matcher : blockMatchers) {
+                        if (matcher.test(world, pos)) {
+                            return true;
+                        }
                     }
                 }
                 return false;
@@ -694,27 +785,91 @@ public class CommonRuleEvaluator {
             logger.log(Level.ERROR, "Unknown item '" + name + "'!");
             return null;
         }
-        if (obj.has("damage") && obj.has("nbt")) {
-            Predicate<Integer> damage = getExpression(obj.get("damage"));
-            if (damage == null) {
-                return null;
-            }
-            List<Predicate<NBTTagCompound>> nbtMatchers = getNbtMatchers(obj);
-            if (nbtMatchers == null) return null;
-            return s -> s.getItem() == item && damage.test(s.getItemDamage()) && nbtMatchers.stream().allMatch(p -> p.test(s.getTagCompound()));
-        } else if (obj.has("damage")) {
-            Predicate<Integer> damage = getExpression(obj.get("damage"));
-            if (damage == null) {
-                return null;
-            }
-            return s -> s.getItem() == item && damage.test(s.getItemDamage());
-        } else if (obj.has("nbt")) {
-            List<Predicate<NBTTagCompound>> nbtMatchers = getNbtMatchers(obj);
-            if (nbtMatchers == null) return null;
-            return s -> s.getItem() == item && nbtMatchers.stream().allMatch(p -> p.test(s.getTagCompound()));
-        } else {
-            return s -> s.getItem() == item;
+
+        if (obj.has("empty")) {
+            boolean empty = obj.get("empty").getAsBoolean();
+            return s -> s.isEmpty() == empty;
         }
+
+        Predicate<ItemStack> test;
+        if (obj.has("damage")) {
+            Predicate<Integer> damage = getExpression(obj.get("damage"));
+            if (damage == null) {
+                return null;
+            }
+            test = s -> s.getItem() == item && damage.test(s.getItemDamage());
+        } else {
+            test = s -> s.getItem() == item;
+        }
+
+        if (obj.has("count")) {
+            Predicate<Integer> count = getExpression(obj.get("count"));
+            if (count != null) {
+                Predicate<ItemStack> finalTest = test;
+                test = s -> finalTest.test(s) && count.test(s.getCount());
+            }
+        }
+        if (obj.has("ore")) {
+            int oreId = OreDictionary.getOreID(obj.get("ore").getAsString());
+            Predicate<ItemStack> finalTest = test;
+            test = s -> finalTest.test(s) && isMatchingOreId(s.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(s), oreId);
+        }
+        if (obj.has("mod")) {
+            String mod = obj.get("mod").getAsString();
+            Predicate<ItemStack> finalTest = test;
+            test = s -> finalTest.test(s) && "mod".equals(s.getItem().getRegistryName().getResourceDomain());
+        }
+        if (obj.has("nbt")) {
+            List<Predicate<NBTTagCompound>> nbtMatchers = getNbtMatchers(obj);
+            if (nbtMatchers != null) {
+                Predicate<ItemStack> finalTest = test;
+                test = s -> finalTest.test(s) && nbtMatchers.stream().allMatch(p -> p.test(s.getTagCompound()));
+            }
+        }
+        if (obj.has("energy")) {
+            Predicate<Integer> energy = getExpression(obj.get("energy"));
+            if (energy != null) {
+                Predicate<ItemStack> finalTest = test;
+                test = s -> finalTest.test(s) && energy.test(getEnergy(s));
+            }
+        }
+
+        return test;
+    }
+
+    private int getEnergy(ItemStack stack) {
+        if (stack.hasCapability(CapabilityEnergy.ENERGY, null)) {
+            IEnergyStorage capability = stack.getCapability(CapabilityEnergy.ENERGY, null);
+            return capability.getEnergyStored();
+        }
+        return 0;
+    }
+
+    private boolean contains(World world, BlockPos pos, @Nullable EnumFacing side, @Nonnull List<Predicate<ItemStack>> matchers) {
+        TileEntity tileEntity = world.getTileEntity(pos);
+        if (tileEntity != null && tileEntity.hasCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, side)) {
+            IItemHandler handler = tileEntity.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, side);
+            for (int i = 0 ; i < handler.getSlots() ; i++) {
+                ItemStack stack = handler.getStackInSlot(i);
+                if (!stack.isEmpty()) {
+                    for (Predicate<ItemStack> matcher : matchers) {
+                        if (matcher.test(stack)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private int getEnergy(World world, BlockPos pos, @Nullable EnumFacing side) {
+        TileEntity tileEntity = world.getTileEntity(pos);
+        if (tileEntity != null && tileEntity.hasCapability(CapabilityEnergy.ENERGY, side)) {
+            IEnergyStorage energy = tileEntity.getCapability(CapabilityEnergy.ENERGY, side);
+            return energy.getEnergyStored();
+        }
+        return 0;
     }
 
     private List<Predicate<NBTTagCompound>> getNbtMatchers(JsonObject obj) {

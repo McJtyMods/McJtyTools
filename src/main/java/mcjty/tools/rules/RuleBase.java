@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
+import mcjty.tools.varia.LookAtTools;
 import mcjty.tools.varia.Tools;
 import net.minecraft.block.Block;
 import net.minecraft.block.properties.IProperty;
@@ -30,6 +31,7 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
@@ -38,8 +40,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static mcjty.tools.rules.CommonRuleKeys.*;
 
@@ -318,7 +322,49 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         actions.add(event -> layer.setPlayerState(event.getPlayer(), finalState, finalValue));
     }
 
+    @Nonnull
+    private Function<EventGetter, BlockPos> parseOffset(String json) {
+        JsonParser parser = new JsonParser();
+        JsonElement element = parser.parse(json);
+        JsonObject obj = element.getAsJsonObject();
+
+        int offsetX;
+        int offsetY;
+        int offsetZ;
+
+        if (obj.has("offset")) {
+            JsonObject offset = obj.getAsJsonObject("offset");
+            offsetX = offset.has("x") ? offset.get("x").getAsInt() : 0;
+            offsetY = offset.has("y") ? offset.get("y").getAsInt() : 0;
+            offsetZ = offset.has("z") ? offset.get("z").getAsInt() : 0;
+        } else {
+            offsetX = 0;
+            offsetY = 0;
+            offsetZ = 0;
+        }
+
+        if (obj.has("look")) {
+            return event -> {
+                RayTraceResult result = LookAtTools.getMovingObjectPositionFromPlayer(event.getWorld(), event.getPlayer(), false);
+                if (result != null && result.typeOfHit == RayTraceResult.Type.BLOCK) {
+                    return result.getBlockPos().add(offsetX, offsetY, offsetZ);
+                } else {
+                    return event.getPosition().add(offsetX, offsetY, offsetZ);
+                }
+            };
+
+        }
+        return event -> event.getPosition().add(offsetX, offsetY, offsetZ);
+    }
+
     private void addSetBlockAction(AttributeMap map) {
+        Function<EventGetter, BlockPos> posFunction;
+        if (map.has(BLOCKOFFSET)) {
+            posFunction = parseOffset(map.get(BLOCKOFFSET));
+        } else {
+            posFunction = event -> event.getPosition();
+        }
+
         String json = map.get(ACTION_SETBLOCK);
         JsonParser parser = new JsonParser();
         JsonElement element = parser.parse(json);
@@ -330,7 +376,12 @@ public class RuleBase<T extends RuleBase.EventGetter> {
                 return;
             }
             IBlockState state = block.getDefaultState();
-            actions.add(event -> event.getWorld().setBlockState(event.getPosition(), state, 3));
+            actions.add(event -> {
+                BlockPos pos = posFunction.apply(event);
+                if (pos != null) {
+                    event.getWorld().setBlockState(pos, state, 3);
+                }
+            });
         } else {
             JsonObject obj = element.getAsJsonObject();
             if (!obj.has("block")) {
@@ -359,8 +410,12 @@ public class RuleBase<T extends RuleBase.EventGetter> {
                 }
             }
             IBlockState finalState = state;
-            actions.add(event -> event.getWorld().setBlockState(event.getPosition(), finalState, 3));
-
+            actions.add(event -> {
+                BlockPos pos = posFunction.apply(event);
+                if (pos != null) {
+                    event.getWorld().setBlockState(pos, finalState, 3);
+                }
+            });
         }
     }
 
