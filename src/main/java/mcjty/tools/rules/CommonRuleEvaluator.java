@@ -779,16 +779,16 @@ public class CommonRuleEvaluator {
     }
 
     private Predicate<ItemStack> getMatcher(JsonObject obj) {
+        if (obj.has("empty")) {
+            boolean empty = obj.get("empty").getAsBoolean();
+            return s -> s.isEmpty() == empty;
+        }
+
         String name = obj.get("item").getAsString();
         Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
         if (item == null) {
             logger.log(Level.ERROR, "Unknown item '" + name + "'!");
             return null;
-        }
-
-        if (obj.has("empty")) {
-            boolean empty = obj.get("empty").getAsBoolean();
-            return s -> s.isEmpty() == empty;
         }
 
         Predicate<ItemStack> test;
