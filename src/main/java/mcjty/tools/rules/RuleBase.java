@@ -44,6 +44,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static mcjty.tools.rules.CommonRuleKeys.*;
 

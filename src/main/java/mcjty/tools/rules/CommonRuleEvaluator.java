@@ -510,7 +510,7 @@ public class CommonRuleEvaluator {
                 test = (world, pos) -> finalTest.test(world, pos) && mod.equals(world.getBlockState(pos).getBlock().getRegistryName().getResourceDomain());
             }
             if (obj.has("energy")) {
-                Predicate<Integer> energy = getExpression(obj.get("energy"));
+                Predicate<Integer> energy = getExpression(obj.get("energy"), logger);
                 if (energy != null) {
                     EnumFacing side;
                     if (obj.has("side")) {
@@ -544,14 +544,14 @@ public class CommonRuleEvaluator {
     protected List<Predicate<ItemStack>> getItems(JsonElement itemObj) {
         List<Predicate<ItemStack>> items = new ArrayList<>();
         if (itemObj.isJsonObject()) {
-            Predicate<ItemStack> matcher = getMatcher(itemObj.getAsJsonObject());
+            Predicate<ItemStack> matcher = getMatcher(itemObj.getAsJsonObject(), logger);
             if (matcher != null) {
                 items.add(matcher);
             }
         } else if (itemObj.isJsonArray()) {
             for (JsonElement element : itemObj.getAsJsonArray()) {
                 JsonObject obj = element.getAsJsonObject();
-                Predicate<ItemStack> matcher = getMatcher(obj);
+                Predicate<ItemStack> matcher = getMatcher(obj, logger);
                 if (matcher != null) {
                     items.add(matcher);
                 }
@@ -612,7 +612,7 @@ public class CommonRuleEvaluator {
         }
     }
 
-    private boolean isMatchingOreId(int[] oreIDs, int oreId) {
+    private static boolean isMatchingOreId(int[] oreIDs, int oreId) {
         if (oreIDs.length > 0) {
             for (int id : oreIDs) {
                 if (id == oreId) {
@@ -705,7 +705,7 @@ public class CommonRuleEvaluator {
         return true;
     }
 
-    private Predicate<Integer> getExpression(String expression) {
+    private static Predicate<Integer> getExpression(String expression, Logger logger) {
         try {
             if (expression.startsWith(">=")) {
                 int amount = Integer.parseInt(expression.substring(2));
@@ -747,13 +747,13 @@ public class CommonRuleEvaluator {
         }
     }
 
-    private Predicate<Integer> getExpression(JsonElement element) {
+    private static Predicate<Integer> getExpression(JsonElement element, Logger logger) {
         if (element.isJsonPrimitive()) {
             if (element.getAsJsonPrimitive().isNumber()) {
                 int amount = element.getAsInt();
                 return i -> i == amount;
             } else {
-                return getExpression(element.getAsString());
+                return getExpression(element.getAsString(), logger);
             }
         } else {
             logger.log(Level.ERROR, "Bad expression!");
@@ -761,7 +761,7 @@ public class CommonRuleEvaluator {
         }
     }
 
-    private Predicate<ItemStack> getMatcher(String name) {
+    private static Predicate<ItemStack> getMatcher(String name, Logger logger) {
         ItemStack stack = Tools.parseStack(name, logger);
         if (!stack.isEmpty()) {
             // Stack matching
@@ -778,7 +778,7 @@ public class CommonRuleEvaluator {
         return null;
     }
 
-    private Predicate<ItemStack> getMatcher(JsonObject obj) {
+    private static Predicate<ItemStack> getMatcher(JsonObject obj, Logger logger) {
         if (obj.has("empty")) {
             boolean empty = obj.get("empty").getAsBoolean();
             return s -> s.isEmpty() == empty;
@@ -793,7 +793,7 @@ public class CommonRuleEvaluator {
 
         Predicate<ItemStack> test;
         if (obj.has("damage")) {
-            Predicate<Integer> damage = getExpression(obj.get("damage"));
+            Predicate<Integer> damage = getExpression(obj.get("damage"), logger);
             if (damage == null) {
                 return null;
             }
@@ -803,7 +803,7 @@ public class CommonRuleEvaluator {
         }
 
         if (obj.has("count")) {
-            Predicate<Integer> count = getExpression(obj.get("count"));
+            Predicate<Integer> count = getExpression(obj.get("count"), logger);
             if (count != null) {
                 Predicate<ItemStack> finalTest = test;
                 test = s -> finalTest.test(s) && count.test(s.getCount());
@@ -820,14 +820,14 @@ public class CommonRuleEvaluator {
             test = s -> finalTest.test(s) && "mod".equals(s.getItem().getRegistryName().getResourceDomain());
         }
         if (obj.has("nbt")) {
-            List<Predicate<NBTTagCompound>> nbtMatchers = getNbtMatchers(obj);
+            List<Predicate<NBTTagCompound>> nbtMatchers = getNbtMatchers(obj, logger);
             if (nbtMatchers != null) {
                 Predicate<ItemStack> finalTest = test;
                 test = s -> finalTest.test(s) && nbtMatchers.stream().allMatch(p -> p.test(s.getTagCompound()));
             }
         }
         if (obj.has("energy")) {
-            Predicate<Integer> energy = getExpression(obj.get("energy"));
+            Predicate<Integer> energy = getExpression(obj.get("energy"), logger);
             if (energy != null) {
                 Predicate<ItemStack> finalTest = test;
                 test = s -> finalTest.test(s) && energy.test(getEnergy(s));
@@ -837,7 +837,7 @@ public class CommonRuleEvaluator {
         return test;
     }
 
-    private int getEnergy(ItemStack stack) {
+    private static int getEnergy(ItemStack stack) {
         if (stack.hasCapability(CapabilityEnergy.ENERGY, null)) {
             IEnergyStorage capability = stack.getCapability(CapabilityEnergy.ENERGY, null);
             return capability.getEnergyStored();
@@ -872,18 +872,18 @@ public class CommonRuleEvaluator {
         return 0;
     }
 
-    private List<Predicate<NBTTagCompound>> getNbtMatchers(JsonObject obj) {
+    private static List<Predicate<NBTTagCompound>> getNbtMatchers(JsonObject obj, Logger logger) {
         JsonArray nbtArray = obj.getAsJsonArray("nbt");
-        return getNbtMatchers(nbtArray);
+        return getNbtMatchers(nbtArray, logger);
     }
 
-    private List<Predicate<NBTTagCompound>> getNbtMatchers(JsonArray nbtArray) {
+    private static List<Predicate<NBTTagCompound>> getNbtMatchers(JsonArray nbtArray, Logger logger) {
         List<Predicate<NBTTagCompound>> nbtMatchers = new ArrayList<>();
         for (JsonElement element : nbtArray) {
             JsonObject o = element.getAsJsonObject();
             String tag = o.get("tag").getAsString();
             if (o.has("contains")) {
-                List<Predicate<NBTTagCompound>> subMatchers = getNbtMatchers(o.getAsJsonArray("contains"));
+                List<Predicate<NBTTagCompound>> subMatchers = getNbtMatchers(o.getAsJsonArray("contains"), logger);
                 nbtMatchers.add(tagCompound -> {
                     if (tagCompound != null) {
                         NBTTagList list = tagCompound.getTagList(tag, Constants.NBT.TAG_COMPOUND);
@@ -898,7 +898,7 @@ public class CommonRuleEvaluator {
                     return false;
                 });
             } else {
-                Predicate<Integer> nbt = getExpression(o.get("value"));
+                Predicate<Integer> nbt = getExpression(o.get("value"), logger);
                 if (nbt == null) {
                     return null;
                 }
@@ -910,20 +910,20 @@ public class CommonRuleEvaluator {
     }
 
 
-    protected List<Predicate<ItemStack>> getItems(List<String> itemNames) {
+    public static List<Predicate<ItemStack>> getItems(List<String> itemNames, Logger logger) {
         List<Predicate<ItemStack>> items = new ArrayList<>();
         for (String json : itemNames) {
             JsonParser parser = new JsonParser();
             JsonElement element = parser.parse(json);
             if (element.isJsonPrimitive()) {
                 String name = element.getAsString();
-                Predicate<ItemStack> matcher = getMatcher(name);
+                Predicate<ItemStack> matcher = getMatcher(name, logger);
                 if (matcher != null) {
                     items.add(matcher);
                 }
             } else if (element.isJsonObject()) {
                 JsonObject obj = element.getAsJsonObject();
-                Predicate<ItemStack> matcher = getMatcher(obj);
+                Predicate<ItemStack> matcher = getMatcher(obj, logger);
                 if (matcher != null) {
                     items.add(matcher);
                 }
@@ -935,22 +935,22 @@ public class CommonRuleEvaluator {
     }
 
     public void addHelmetCheck(AttributeMap map) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(HELMET));
+        List<Predicate<ItemStack>> items = getItems(map.getList(HELMET), logger);
         addArmorCheck(items, EntityEquipmentSlot.HEAD);
     }
 
     public void addChestplateCheck(AttributeMap map) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(CHESTPLATE));
+        List<Predicate<ItemStack>> items = getItems(map.getList(CHESTPLATE), logger);
         addArmorCheck(items, EntityEquipmentSlot.CHEST);
     }
 
     public void addLeggingsCheck(AttributeMap map) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(LEGGINGS));
+        List<Predicate<ItemStack>> items = getItems(map.getList(LEGGINGS), logger);
         addArmorCheck(items, EntityEquipmentSlot.LEGS);
     }
 
     public void addBootsCheck(AttributeMap map) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(BOOTS));
+        List<Predicate<ItemStack>> items = getItems(map.getList(BOOTS), logger);
         addArmorCheck(items, EntityEquipmentSlot.FEET);
     }
 
@@ -972,7 +972,7 @@ public class CommonRuleEvaluator {
     }
 
     public void addHeldItemCheck(AttributeMap map) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(HELDITEM));
+        List<Predicate<ItemStack>> items = getItems(map.getList(HELDITEM), logger);
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
@@ -990,7 +990,7 @@ public class CommonRuleEvaluator {
     }
 
     public void addOffHandItemCheck(AttributeMap map) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(OFFHANDITEM));
+        List<Predicate<ItemStack>> items = getItems(map.getList(OFFHANDITEM), logger);
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
@@ -1008,7 +1008,7 @@ public class CommonRuleEvaluator {
     }
 
     public void addBothHandsItemCheck(AttributeMap map) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(BOTHHANDSITEM));
+        List<Predicate<ItemStack>> items = getItems(map.getList(BOTHHANDSITEM), logger);
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
@@ -1123,7 +1123,7 @@ public class CommonRuleEvaluator {
     }
 
     public void addBaubleCheck(AttributeMap map, Key<String> key, Supplier<int[]> slotSupplier) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(key));
+        List<Predicate<ItemStack>> items = getItems(map.getList(key), logger);
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
