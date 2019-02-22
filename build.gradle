@@ -106,7 +106,7 @@ processResources
 
 jar {
     manifest {
-        attributes("Maven-Artifact": "com.github.mcjty:mcjtytools:0.0.11")
+        attributes("Maven-Artifact": "com.github.mcjty:mcjtytools:0.0.12")
     }
 }
 
