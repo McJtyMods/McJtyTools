@@ -15,6 +15,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.HashMap;
@@ -100,6 +102,7 @@ public class Tools {
         return Pair.of(factor, stack);
     }
 
+    @Nonnull
     public static ItemStack parseStack(String name, Logger logger) {
         if (name.contains("/")) {
             String[] split = StringUtils.split(name, "/");
@@ -121,7 +124,11 @@ public class Tools {
         }
     }
 
+    @Nullable
     public static ItemStack parseStack(JsonObject obj, Logger logger) {
+        if (obj.has("empty")) {
+            return ItemStack.EMPTY;
+        }
         String name = obj.get("item").getAsString();
         Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
         if (item == null) {

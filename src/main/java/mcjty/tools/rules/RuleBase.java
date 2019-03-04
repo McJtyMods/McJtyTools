@@ -44,7 +44,6 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static mcjty.tools.rules.CommonRuleKeys.*;
 
@@ -174,6 +173,12 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         }
         if (map.has(ACTION_SETBLOCK)) {
             addSetBlockAction(map);
+        }
+        if (map.has(ACTION_SETHELDITEM)) {
+            addSetHeldItemAction(map);
+        }
+        if (map.has(ACTION_SETHELDAMOUNT)) {
+            addSetHeldAmountAction(map);
         }
         if (map.has(ACTION_SETSTATE)) {
             if (layer.hasEnigmaScript()) {
@@ -356,6 +361,64 @@ public class RuleBase<T extends RuleBase.EventGetter> {
 
         }
         return event -> event.getPosition().add(offsetX, offsetY, offsetZ);
+    }
+
+    private void addSetHeldItemAction(AttributeMap map) {
+        String json = map.get(ACTION_SETHELDITEM);
+        JsonParser parser = new JsonParser();
+        JsonElement element = parser.parse(json);
+        ItemStack stack;
+        if (element.isJsonPrimitive()) {
+            String name = element.getAsString();
+            stack = Tools.parseStack(name, logger);
+        } else if (element.isJsonObject()) {
+            JsonObject obj = element.getAsJsonObject();
+            stack = Tools.parseStack(obj, logger);
+            if (stack == null) {
+                return;
+            }
+        } else {
+            logger.log(Level.ERROR, "Item description '" + json + "' is not valid!");
+            return;
+        }
+        actions.add(event -> event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, stack));
+    }
+
+    private void addSetHeldAmountAction(AttributeMap map) {
+        String amount = map.get(ACTION_SETHELDAMOUNT);
+        int add = 0;
+        int set = -1;
+        if (amount.startsWith("+")) {
+            add = Integer.parseInt(amount.substring(1));
+        } else if (amount.startsWith("-")) {
+            add = -Integer.parseInt(amount.substring(1));
+        } else if (amount.startsWith("=")) {
+            set = Integer.parseInt(amount.substring(1));
+        } else {
+            set = Integer.parseInt(amount);
+        }
+
+        int finalSet = set;
+        if (finalSet >= 0) {
+            actions.add(event -> {
+                ItemStack item = event.getPlayer().getHeldItemMainhand();
+                item.setCount(finalSet);
+                event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, item);
+            });
+        } else {
+            int finalAdd = add;
+            actions.add(event -> {
+                ItemStack item = event.getPlayer().getHeldItemMainhand();
+                int newCount = item.getCount() + finalAdd;
+                if (newCount < 0) {
+                    newCount = 0;
+                } else if (newCount >= item.getMaxStackSize()) {
+                    newCount = item.getMaxStackSize()-1;
+                }
+                item.setCount(newCount);
+                event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, item);
+            });
+        }
     }
 
     private void addSetBlockAction(AttributeMap map) {

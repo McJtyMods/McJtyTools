@@ -84,6 +84,8 @@ public interface CommonRuleKeys {
     Key<String> ACTION_GIVE = Key.create(Type.JSON, "give");
     Key<String> ACTION_DROP = Key.create(Type.JSON, "drop");
     Key<String> ACTION_SETBLOCK = Key.create(Type.JSON, "setblock");
+    Key<String> ACTION_SETHELDITEM = Key.create(Type.JSON, "sethelditem");
+    Key<String> ACTION_SETHELDAMOUNT = Key.create(Type.STRING, "setheldamount");
     Key<String> ACTION_SETSTATE = Key.create(Type.STRING, "setstate");
     Key<String> ACTION_SETPSTATE = Key.create(Type.STRING, "setpstate");
 
