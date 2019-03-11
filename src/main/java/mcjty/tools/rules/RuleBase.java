@@ -381,7 +381,7 @@ public class RuleBase<T extends RuleBase.EventGetter> {
             logger.log(Level.ERROR, "Item description '" + json + "' is not valid!");
             return;
         }
-        actions.add(event -> event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, stack));
+        actions.add(event -> event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, stack.copy()));
     }
 
     private void addSetHeldAmountAction(AttributeMap map) {
@@ -403,7 +403,7 @@ public class RuleBase<T extends RuleBase.EventGetter> {
             actions.add(event -> {
                 ItemStack item = event.getPlayer().getHeldItemMainhand();
                 item.setCount(finalSet);
-                event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, item);
+                event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, item.copy());
             });
         } else {
             int finalAdd = add;
@@ -416,7 +416,7 @@ public class RuleBase<T extends RuleBase.EventGetter> {
                     newCount = item.getMaxStackSize()-1;
                 }
                 item.setCount(newCount);
-                event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, item);
+                event.getPlayer().setHeldItem(EnumHand.MAIN_HAND, item.copy());
             });
         }
     }
