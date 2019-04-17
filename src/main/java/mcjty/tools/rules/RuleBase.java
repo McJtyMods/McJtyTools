@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import mcjty.tools.typed.AttributeMap;
 import mcjty.tools.typed.Key;
+import mcjty.tools.varia.DummyCommandSender;
 import mcjty.tools.varia.LookAtTools;
 import mcjty.tools.varia.Tools;
 import net.minecraft.block.Block;
@@ -27,6 +28,7 @@ import net.minecraft.nbt.NBTException;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
@@ -114,6 +116,9 @@ public class RuleBase<T extends RuleBase.EventGetter> {
     }
 
     protected void addActions(AttributeMap map, IModRuleCompatibilityLayer layer) {
+        if (map.has(ACTION_COMMAND)) {
+            addCommandAction(map);
+        }
         if (map.has(ACTION_HEALTHMULTIPLY) || map.has(ACTION_HEALTHADD)) {
             addHealthAction(map);
         }
@@ -226,6 +231,15 @@ public class RuleBase<T extends RuleBase.EventGetter> {
             addSource(DamageSource.DRAGON_BREATH);
             addSource(DamageSource.FIREWORKS);
         }
+    }
+
+    private void addCommandAction(AttributeMap map) {
+        String command = map.get(ACTION_COMMAND);
+        actions.add(event -> {
+            MinecraftServer server = event.getWorld().getMinecraftServer();
+            EntityPlayer player = event.getPlayer();
+            server.commandManager.executeCommand(player != null ? player : new DummyCommandSender(event.getWorld(), null), command);
+        });
     }
 
     private void addDoDamageAction(AttributeMap map) {

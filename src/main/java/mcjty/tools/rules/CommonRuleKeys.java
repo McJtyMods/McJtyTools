@@ -61,6 +61,7 @@ public interface CommonRuleKeys {
 
     // Outputs
 
+    Key<String> ACTION_COMMAND = Key.create(Type.STRING, "command");
     Key<String> ACTION_RESULT = Key.create(Type.STRING, "result");
 
     Key<Float> ACTION_HEALTHMULTIPLY = Key.create(Type.FLOAT, "healthmultiply");
