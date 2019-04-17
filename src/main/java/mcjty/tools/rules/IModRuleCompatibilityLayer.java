@@ -38,6 +38,10 @@ public interface IModRuleCompatibilityLayer {
 
     boolean hasGameStage(EntityPlayer player, String stage);
 
+    void addGameStage(EntityPlayer player, String stage);
+
+    void removeGameStage(EntityPlayer player, String stage);
+
     // --------------------
     // Lost Cities
     // --------------------

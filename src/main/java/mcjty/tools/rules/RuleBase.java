@@ -119,6 +119,12 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         if (map.has(ACTION_COMMAND)) {
             addCommandAction(map);
         }
+        if (map.has(ACTION_ADDSTAGE)) {
+            addAddStage(map, layer);
+        }
+        if (map.has(ACTION_REMOVESTAGE)) {
+            addRemoveStage(map, layer);
+        }
         if (map.has(ACTION_HEALTHMULTIPLY) || map.has(ACTION_HEALTHADD)) {
             addHealthAction(map);
         }
@@ -239,6 +245,26 @@ public class RuleBase<T extends RuleBase.EventGetter> {
             MinecraftServer server = event.getWorld().getMinecraftServer();
             EntityPlayer player = event.getPlayer();
             server.commandManager.executeCommand(player != null ? player : new DummyCommandSender(event.getWorld(), null), command);
+        });
+    }
+
+    private void addAddStage(AttributeMap map, IModRuleCompatibilityLayer layer) {
+        String stage = map.get(ACTION_ADDSTAGE);
+        actions.add(event -> {
+            EntityPlayer player = event.getPlayer();
+            if (player != null) {
+                layer.addGameStage(player, stage);
+            }
+        });
+    }
+
+    private void addRemoveStage(AttributeMap map, IModRuleCompatibilityLayer layer) {
+        String stage = map.get(ACTION_REMOVESTAGE);
+        actions.add(event -> {
+            EntityPlayer player = event.getPlayer();
+            if (player != null) {
+                layer.removeGameStage(player, stage);
+            }
         });
     }
 
