@@ -82,6 +82,7 @@ public interface CommonRuleKeys {
     Key<String> ACTION_ARMORLEGS = Key.create(Type.JSON, "armorlegs");
     Key<String> ACTION_ARMORBOOTS = Key.create(Type.JSON, "armorboots");
     Key<String> ACTION_MOBNBT = Key.create(Type.JSON, "nbt");
+    Key<String> ACTION_CUSTOMNAME = Key.create(Type.STRING, "customname");
     Key<Boolean> ACTION_ANGRY = Key.create(Type.BOOLEAN, "angry");
     Key<String> ACTION_MESSAGE = Key.create(Type.STRING, "message");
     Key<String> ACTION_GIVE = Key.create(Type.JSON, "give");

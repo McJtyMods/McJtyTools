@@ -143,6 +143,9 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         if (map.has(ACTION_ANGRY)) {
             addAngryAction(map);
         }
+        if (map.has(ACTION_CUSTOMNAME)) {
+            addCustomName(map);
+        }
         if (map.has(ACTION_MOBNBT)) {
             addMobNBT(map);
         }
@@ -768,6 +771,16 @@ public class RuleBase<T extends RuleBase.EventGetter> {
             actions.add(event -> {
                 EntityLivingBase entityLiving = event.getEntityLiving();
                 entityLiving.readEntityFromNBT(tagCompound);
+            });
+        }
+    }
+
+    private void addCustomName(AttributeMap map) {
+        String customName = map.get(ACTION_CUSTOMNAME);
+        if (customName != null) {
+            actions.add(event -> {
+                EntityLivingBase entityLiving = event.getEntityLiving();
+                entityLiving.setCustomNameTag(customName);
             });
         }
     }
