@@ -139,6 +139,9 @@ public class Tools {
         if (obj.has("damage")) {
             stack.setItemDamage(obj.get("damage").getAsInt());
         }
+        if (obj.has("count")) {
+            stack.setCount(obj.get("count").getAsInt());
+        }
         if (obj.has("nbt")) {
             String nbt = obj.get("nbt").toString();
             NBTTagCompound tag = null;
