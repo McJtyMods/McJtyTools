@@ -628,7 +628,7 @@ public class CommonRuleEvaluator {
         final int mintime = map.get(MINTIME);
         checks.add((event,query) -> {
             int time = (int) query.getWorld(event).getWorldTime();
-            return time >= mintime;
+            return (time % 24000) >= mintime;
         });
     }
 
@@ -636,7 +636,7 @@ public class CommonRuleEvaluator {
         final int maxtime = map.get(MAXTIME);
         checks.add((event,query) -> {
             int time = (int) query.getWorld(event).getWorldTime();
-            return time <= maxtime;
+            return (time % 24000) <= maxtime;
         });
     }
 
