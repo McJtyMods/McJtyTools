@@ -37,6 +37,7 @@ public class Tools {
             modSourceID.put("1.8.8.jar", "minecraft");
             modSourceID.put("1.8.9.jar", "minecraft");
             modSourceID.put("Forge", "minecraft");
+            modSourceID.put("forge", "minecraft");
         }
 
 
@@ -65,6 +66,8 @@ public class Tools {
         if (modName.equals("Minecraft Coder Pack")) {
             modName = "minecraft";
         } else if (modName.equals("Forge")) {
+            modName = "minecraft";
+        } else if (modName.equals("forge")) {
             modName = "minecraft";
         }
 
