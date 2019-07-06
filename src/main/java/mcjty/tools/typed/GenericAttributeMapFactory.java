@@ -2,6 +2,7 @@ package mcjty.tools.typed;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import mcjty.tools.varia.JSonTools;
 
 import javax.annotation.Nonnull;
@@ -64,8 +65,22 @@ public class GenericAttributeMapFactory {
                     }
                 } else if (type == Type.JSON) {
                     if (jsonObject.has(key.getName())) {
-                        JsonObject obj = jsonObject.get(key.getName()).getAsJsonObject();
-                        map.setNonnull(key, obj.toString());
+                        JsonElement el = jsonObject.get(key.getName());
+                        if (el.isJsonObject()) {
+                            JsonObject obj = el.getAsJsonObject();
+                            map.setNonnull(key, obj.toString());
+                        } else {
+                            if (el.isJsonPrimitive()) {
+                                JsonPrimitive prim = el.getAsJsonPrimitive();
+                                if (prim.isString()) {
+                                    map.setNonnull(key, prim.getAsString());
+                                } else if (prim.isNumber()) {
+                                    map.setNonnull(key, "" + prim.getAsInt());
+                                } else {
+                                    throw new RuntimeException("Bad type for key '" + key.getName() + "'!");
+                                }
+                            }
+                        }
                     }
                 }
             }
