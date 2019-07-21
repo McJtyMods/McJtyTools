@@ -2,6 +2,7 @@ package mcjty.tools.rules;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -24,4 +25,7 @@ public interface IEventQuery<T> {
     Entity getAttacker(T o);
 
     EntityPlayer getPlayer(T o);
+
+    /// Get the item that is being placed
+    ItemStack getItem(T o);
 }
