@@ -139,8 +139,11 @@ public class CommonRuleEvaluator {
         if (map.has(BOOTS)) {
             addBootsCheck(map);
         }
+        if (map.has(PLAYER_HELDITEM)) {
+            addHeldItemCheck(map, PLAYER_HELDITEM);
+        }
         if (map.has(HELDITEM)) {
-            addHeldItemCheck(map);
+            addHeldItemCheck(map, HELDITEM);
         }
         if (map.has(OFFHANDITEM)) {
             addOffHandItemCheck(map);
@@ -971,8 +974,8 @@ public class CommonRuleEvaluator {
         });
     }
 
-    public void addHeldItemCheck(AttributeMap map) {
-        List<Predicate<ItemStack>> items = getItems(map.getList(HELDITEM), logger);
+    public void addHeldItemCheck(AttributeMap map, Key<String> key) {
+        List<Predicate<ItemStack>> items = getItems(map.getList(key), logger);
         checks.add((event,query) -> {
             EntityPlayer player = query.getPlayer(event);
             if (player != null) {
