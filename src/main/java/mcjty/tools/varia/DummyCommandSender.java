@@ -1,24 +1,11 @@
 package mcjty.tools.varia;
 
-import net.minecraft.command.CommandResultStats;
-import net.minecraft.command.ICommandSender;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.world.World;
-
-import javax.annotation.Nullable;
-
-public class DummyCommandSender implements ICommandSender {
+public class DummyCommandSender {} /* @todo 1.15 implements ICommandSender {
 
     private final World world;
-    private final EntityPlayer player;
+    private final PlayerEntity player;
 
-    public DummyCommandSender(World world, EntityPlayer player) {
+    public DummyCommandSender(World world, PlayerEntity player) {
         this.world = world;
         this.player = player;
     }
@@ -80,3 +67,4 @@ public class DummyCommandSender implements ICommandSender {
         return world.getMinecraftServer();
     }
 }
+*/

@@ -1,7 +1,6 @@
 package mcjty.tools.rules;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
@@ -27,7 +26,7 @@ public interface IModRuleCompatibilityLayer {
 
     int[] getTrinketSlots();
 
-    ItemStack getBaubleStack(EntityPlayer player, int slot);
+    ItemStack getBaubleStack(PlayerEntity player, int slot);
 
 
     // --------------------
@@ -36,11 +35,11 @@ public interface IModRuleCompatibilityLayer {
 
     boolean hasGameStages();
 
-    boolean hasGameStage(EntityPlayer player, String stage);
+    boolean hasGameStage(PlayerEntity player, String stage);
 
-    void addGameStage(EntityPlayer player, String stage);
+    void addGameStage(PlayerEntity player, String stage);
 
-    void removeGameStage(EntityPlayer player, String stage);
+    void removeGameStage(PlayerEntity player, String stage);
 
     // --------------------
     // Lost Cities
@@ -76,9 +75,9 @@ public interface IModRuleCompatibilityLayer {
 
     boolean hasEnigmaScript();
 
-    void setPlayerState(EntityPlayer player, String statename, String statevalue);
+    void setPlayerState(PlayerEntity player, String statename, String statevalue);
 
-    String getPlayerState(EntityPlayer player, String statename);
+    String getPlayerState(PlayerEntity player, String statename);
 
     void setState(World world, String statename, String statevalue);
 

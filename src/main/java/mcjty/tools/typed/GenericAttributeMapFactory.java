@@ -4,6 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import mcjty.tools.varia.JSonTools;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.dimension.DimensionType;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -40,6 +42,10 @@ public class GenericAttributeMapFactory {
                     transformer = JsonElement::getAsString;
                 } else if (type == Type.JSON) {
                     transformer = JsonElement::toString;
+                } else if (type == Type.DIMENSION_TYPE) {
+                    transformer = jsonElement -> {
+                        return DimensionType.byName(new ResourceLocation(jsonElement.getAsString()));
+                    };
                 } else {
                     transformer = e -> "INVALID";
                 }
@@ -62,6 +68,11 @@ public class GenericAttributeMapFactory {
                 } else if (type == Type.STRING) {
                     if (jsonObject.has(key.getName())) {
                         map.setNonnull(key, jsonObject.get(key.getName()).getAsString());
+                    }
+                } else if (type == Type.DIMENSION_TYPE) {
+                    if (jsonObject.has(key.getName())) {
+                        String str = jsonObject.get(key.getName()).getAsString();
+                        map.setNonnull(key, DimensionType.byName(new ResourceLocation(str)));
                     }
                 } else if (type == Type.JSON) {
                     if (jsonObject.has(key.getName())) {

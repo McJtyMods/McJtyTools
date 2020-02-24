@@ -1,6 +1,5 @@
 package mcjty.tools.rules;
 
-import com.google.common.base.Optional;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -11,32 +10,32 @@ import mcjty.tools.typed.Key;
 import mcjty.tools.varia.LookAtTools;
 import mcjty.tools.varia.Tools;
 import net.minecraft.block.Block;
-import net.minecraft.block.properties.IProperty;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.block.BlockState;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTBase;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.INBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraft.state.IProperty;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
+import net.minecraft.util.Direction;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.world.EnumDifficulty;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
+import net.minecraft.world.dimension.DimensionType;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.energy.CapabilityEnergy;
 import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.fml.common.eventhandler.Event;
-import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.items.CapabilityItemHandler;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.oredict.OreDictionary;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
@@ -302,27 +301,27 @@ public class CommonRuleEvaluator {
     }
 
     private void addDimensionCheck(AttributeMap map) {
-        List<Integer> dimensions = map.getList(DIMENSION);
+        List<DimensionType> dimensions = map.getList(DIMENSION);
         if (dimensions.size() == 1) {
-            Integer dim = dimensions.get(0);
-            checks.add((event,query) -> query.getWorld(event).provider.getDimension() == dim);
+            DimensionType dim = dimensions.get(0);
+            checks.add((event,query) -> query.getWorld(event).getDimension().getType() == dim);
         } else {
-            Set<Integer> dims = new HashSet<>(dimensions);
-            checks.add((event,query) -> dims.contains(query.getWorld(event).provider.getDimension()));
+            Set<DimensionType> dims = new HashSet<>(dimensions);
+            checks.add((event,query) -> dims.contains(query.getWorld(event).getDimension().getType()));
         }
     }
 
     private void addDifficultyCheck(AttributeMap map) {
         String difficulty = map.get(DIFFICULTY).toLowerCase();
-        EnumDifficulty diff = null;
-        for (EnumDifficulty d : EnumDifficulty.values()) {
-            if (d.getDifficultyResourceKey().endsWith("." + difficulty)) {
+        Difficulty diff = null;
+        for (Difficulty d : Difficulty.values()) {
+            if (d.getTranslationKey().endsWith("." + difficulty)) { // @todo 1.15 maybe a better way?
                 diff = d;
                 break;
             }
         }
         if (diff != null) {
-            EnumDifficulty finalDiff = diff;
+            Difficulty finalDiff = diff;
             checks.add((event,query) -> query.getWorld(event).getDifficulty() == finalDiff);
         } else {
             logger.log(Level.ERROR, "Unknown difficulty '" + difficulty + "'! Use one of 'easy', 'normal', 'hard',  or 'peaceful'");
@@ -411,10 +410,10 @@ public class CommonRuleEvaluator {
 
     private static final int[] EMPTYINTS = new int[0];
 
-    public static <T extends Comparable<T>> IBlockState set(IBlockState state, IProperty<T> property, String value) {
+    public static <T extends Comparable<T>> BlockState set(BlockState state, IProperty<T> property, String value) {
         Optional<T> optionalValue = property.parseValue(value);
         if (optionalValue.isPresent()) {
-            return state.withProperty(property, optionalValue.get());
+            return state.with(property, optionalValue.get());
         } else {
             return state;
         }
@@ -444,8 +443,8 @@ public class CommonRuleEvaluator {
         if (obj.has("look")) {
             return (event, query) -> {
                 RayTraceResult result = LookAtTools.getMovingObjectPositionFromPlayer(query.getWorld(event), query.getPlayer(event), false);
-                if (result != null && result.typeOfHit == RayTraceResult.Type.BLOCK) {
-                    return result.getBlockPos().add(offsetX, offsetY, offsetZ);
+                if (result instanceof BlockRayTraceResult) {
+                    return ((BlockRayTraceResult) result).getPos().add(offsetX, offsetY, offsetZ);
                 } else {
                     return query.getValidBlockPos(event).add(offsetX, offsetY, offsetZ);
                 }
@@ -462,8 +461,10 @@ public class CommonRuleEvaluator {
         if (element.isJsonPrimitive()) {
             String blockname = element.getAsString();
             if (blockname.startsWith("ore:")) {
-                int oreId = OreDictionary.getOreID(blockname.substring(4));
-                return (world, pos) -> isMatchingOreDict(oreId, world.getBlockState(pos).getBlock());
+                // @todo 1.15 ore dictionary?
+//                int oreId = OreDictionary.getOreID(blockname.substring(4));
+//                return (world, pos) -> isMatchingOreDict(oreId, world.getBlockState(pos).getBlock());
+                return (world, pos) -> false;
             } else {
                 Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(blockname));
                 if (block == null) {
@@ -476,8 +477,10 @@ public class CommonRuleEvaluator {
             JsonObject obj = element.getAsJsonObject();
             BiPredicate<World, BlockPos> test;
             if (obj.has("ore")) {
-                int oreId = OreDictionary.getOreID(obj.get("ore").getAsString());
-                test = (world, pos) -> isMatchingOreDict(oreId, world.getBlockState(pos).getBlock());
+                // @todo 1.15 ore dictionary?
+//                int oreId = OreDictionary.getOreID(obj.get("ore").getAsString());
+//                test = (world, pos) -> isMatchingOreDict(oreId, world.getBlockState(pos).getBlock());
+                test = (world, pos) -> false;
             } else if (obj.has("block")) {
                 String blockname = obj.get("block").getAsString();
                 Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(blockname));
@@ -486,19 +489,19 @@ public class CommonRuleEvaluator {
                     return null;
                 }
                 if (obj.has("properties")) {
-                    IBlockState blockState = block.getDefaultState();
+                    BlockState blockState = block.getDefaultState();
                     JsonArray propArray = obj.get("properties").getAsJsonArray();
                     for (JsonElement el : propArray) {
                         JsonObject propObj = el.getAsJsonObject();
                         String name = propObj.get("name").getAsString();
                         String value = propObj.get("value").getAsString();
-                        for (IProperty<?> key : blockState.getPropertyKeys()) {
+                        for (IProperty<?> key : blockState.getProperties()) {
                             if (name.equals(key.getName())) {
                                 blockState = set(blockState, key, value);
                             }
                         }
                     }
-                    IBlockState finalBlockState = blockState;
+                    BlockState finalBlockState = blockState;
                     test = (world, pos) -> world.getBlockState(pos) == finalBlockState;
                 } else {
                     test = (world, pos) -> world.getBlockState(pos).getBlock() == block;
@@ -510,14 +513,14 @@ public class CommonRuleEvaluator {
             if (obj.has("mod")) {
                 String mod = obj.get("mod").getAsString();
                 BiPredicate<World, BlockPos> finalTest = test;
-                test = (world, pos) -> finalTest.test(world, pos) && mod.equals(world.getBlockState(pos).getBlock().getRegistryName().getResourceDomain());
+                test = (world, pos) -> finalTest.test(world, pos) && mod.equals(world.getBlockState(pos).getBlock().getRegistryName().getNamespace());
             }
             if (obj.has("energy")) {
                 Predicate<Integer> energy = getExpression(obj.get("energy"), logger);
                 if (energy != null) {
-                    EnumFacing side;
+                    Direction side;
                     if (obj.has("side")) {
-                        side = EnumFacing.byName(obj.get("side").getAsString().toLowerCase());
+                        side = Direction.byName(obj.get("side").getAsString().toLowerCase());
                     } else {
                         side = null;
                     }
@@ -526,9 +529,9 @@ public class CommonRuleEvaluator {
                 }
             }
             if (obj.has("contains")) {
-                EnumFacing side;
+                Direction side;
                 if (obj.has("side")) {
-                    side = EnumFacing.byName(obj.get("energyside").getAsString().toLowerCase());
+                    side = Direction.byName(obj.get("energyside").getAsString().toLowerCase());
                 } else {
                     side = null;
                 }
@@ -566,9 +569,11 @@ public class CommonRuleEvaluator {
     }
 
     private boolean isMatchingOreDict(int oreId, Block block) {
-        ItemStack stack = new ItemStack(block);
-        int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
-        return isMatchingOreId(oreIDs, oreId);
+//        ItemStack stack = new ItemStack(block);
+//        int[] oreIDs = stack.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(stack);
+//        return isMatchingOreId(oreIDs, oreId);
+        // @todo 1.15 oredict
+        return false;
     }
 
     private void addBlocksCheck(AttributeMap map) {
@@ -630,7 +635,7 @@ public class CommonRuleEvaluator {
     private void addMinTimeCheck(AttributeMap map) {
         final int mintime = map.get(MINTIME);
         checks.add((event,query) -> {
-            int time = (int) query.getWorld(event).getWorldTime();
+            int time = (int) query.getWorld(event).getGameTime();
             return (time % 24000) >= mintime;
         });
     }
@@ -638,7 +643,7 @@ public class CommonRuleEvaluator {
     private void addMaxTimeCheck(AttributeMap map) {
         final int maxtime = map.get(MAXTIME);
         checks.add((event,query) -> {
-            int time = (int) query.getWorld(event).getWorldTime();
+            int time = (int) query.getWorld(event).getGameTime();
             return (time % 24000) <= maxtime;
         });
     }
@@ -666,7 +671,7 @@ public class CommonRuleEvaluator {
         final int minlight = map.get(MINLIGHT);
         checks.add((event,query) -> {
             BlockPos pos = query.getPos(event);
-            return query.getWorld(event).getLight(pos, true) >= minlight;
+            return query.getWorld(event).getLight(pos) >= minlight;
         });
     }
 
@@ -674,7 +679,7 @@ public class CommonRuleEvaluator {
         final int maxlight = map.get(MAXLIGHT);
         checks.add((event,query) -> {
             BlockPos pos = query.getPos(event);
-            return query.getWorld(event).getLight(pos, true) <= maxlight;
+            return query.getWorld(event).getLight(pos) <= maxlight;
         });
     }
 
@@ -800,7 +805,7 @@ public class CommonRuleEvaluator {
             if (damage == null) {
                 return null;
             }
-            test = s -> s.getItem() == item && damage.test(s.getItemDamage());
+            test = s -> s.getItem() == item && damage.test(s.getDamage());
         } else {
             test = s -> s.getItem() == item;
         }
@@ -813,20 +818,22 @@ public class CommonRuleEvaluator {
             }
         }
         if (obj.has("ore")) {
-            int oreId = OreDictionary.getOreID(obj.get("ore").getAsString());
-            Predicate<ItemStack> finalTest = test;
-            test = s -> finalTest.test(s) && isMatchingOreId(s.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(s), oreId);
+            // @todo 1.15 ore dictionary
+//            int oreId = OreDictionary.getOreID(obj.get("ore").getAsString());
+//            Predicate<ItemStack> finalTest = test;
+//            test = s -> finalTest.test(s) && isMatchingOreId(s.isEmpty() ? EMPTYINTS : OreDictionary.getOreIDs(s), oreId);
+            test = s -> false;
         }
         if (obj.has("mod")) {
             String mod = obj.get("mod").getAsString();
             Predicate<ItemStack> finalTest = test;
-            test = s -> finalTest.test(s) && "mod".equals(s.getItem().getRegistryName().getResourceDomain());
+            test = s -> finalTest.test(s) && "mod".equals(s.getItem().getRegistryName().getNamespace());
         }
         if (obj.has("nbt")) {
-            List<Predicate<NBTTagCompound>> nbtMatchers = getNbtMatchers(obj, logger);
+            List<Predicate<CompoundNBT>> nbtMatchers = getNbtMatchers(obj, logger);
             if (nbtMatchers != null) {
                 Predicate<ItemStack> finalTest = test;
-                test = s -> finalTest.test(s) && nbtMatchers.stream().allMatch(p -> p.test(s.getTagCompound()));
+                test = s -> finalTest.test(s) && nbtMatchers.stream().allMatch(p -> p.test(s.getTag()));
             }
         }
         if (obj.has("energy")) {
@@ -841,58 +848,55 @@ public class CommonRuleEvaluator {
     }
 
     private static int getEnergy(ItemStack stack) {
-        if (stack.hasCapability(CapabilityEnergy.ENERGY, null)) {
-            IEnergyStorage capability = stack.getCapability(CapabilityEnergy.ENERGY, null);
-            return capability.getEnergyStored();
-        }
-        return 0;
+        return stack.getCapability(CapabilityEnergy.ENERGY).map(IEnergyStorage::getEnergyStored).orElse(0);
     }
 
-    private boolean contains(World world, BlockPos pos, @Nullable EnumFacing side, @Nonnull List<Predicate<ItemStack>> matchers) {
+    private boolean contains(World world, BlockPos pos, @Nullable Direction side, @Nonnull List<Predicate<ItemStack>> matchers) {
         TileEntity tileEntity = world.getTileEntity(pos);
-        if (tileEntity != null && tileEntity.hasCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, side)) {
-            IItemHandler handler = tileEntity.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, side);
-            for (int i = 0 ; i < handler.getSlots() ; i++) {
-                ItemStack stack = handler.getStackInSlot(i);
-                if (!stack.isEmpty()) {
-                    for (Predicate<ItemStack> matcher : matchers) {
-                        if (matcher.test(stack)) {
-                            return true;
+        if (tileEntity != null) {
+            return tileEntity.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, side).map(h -> {
+                for (int i = 0 ; i < h.getSlots() ; i++) {
+                    ItemStack stack = h.getStackInSlot(i);
+                    if (!stack.isEmpty()) {
+                        for (Predicate<ItemStack> matcher : matchers) {
+                            if (matcher.test(stack)) {
+                                return true;
+                            }
                         }
                     }
                 }
-            }
+                return false;
+            }).orElse(false);
         }
         return false;
     }
 
-    private int getEnergy(World world, BlockPos pos, @Nullable EnumFacing side) {
+    private int getEnergy(World world, BlockPos pos, @Nullable Direction side) {
         TileEntity tileEntity = world.getTileEntity(pos);
-        if (tileEntity != null && tileEntity.hasCapability(CapabilityEnergy.ENERGY, side)) {
-            IEnergyStorage energy = tileEntity.getCapability(CapabilityEnergy.ENERGY, side);
-            return energy.getEnergyStored();
+        if (tileEntity != null) {
+            return tileEntity.getCapability(CapabilityEnergy.ENERGY, side).map(h -> h.getEnergyStored()).orElse(0);
         }
         return 0;
     }
 
-    private static List<Predicate<NBTTagCompound>> getNbtMatchers(JsonObject obj, Logger logger) {
+    private static List<Predicate<CompoundNBT>> getNbtMatchers(JsonObject obj, Logger logger) {
         JsonArray nbtArray = obj.getAsJsonArray("nbt");
         return getNbtMatchers(nbtArray, logger);
     }
 
-    private static List<Predicate<NBTTagCompound>> getNbtMatchers(JsonArray nbtArray, Logger logger) {
-        List<Predicate<NBTTagCompound>> nbtMatchers = new ArrayList<>();
+    private static List<Predicate<CompoundNBT>> getNbtMatchers(JsonArray nbtArray, Logger logger) {
+        List<Predicate<CompoundNBT>> nbtMatchers = new ArrayList<>();
         for (JsonElement element : nbtArray) {
             JsonObject o = element.getAsJsonObject();
             String tag = o.get("tag").getAsString();
             if (o.has("contains")) {
-                List<Predicate<NBTTagCompound>> subMatchers = getNbtMatchers(o.getAsJsonArray("contains"), logger);
+                List<Predicate<CompoundNBT>> subMatchers = getNbtMatchers(o.getAsJsonArray("contains"), logger);
                 nbtMatchers.add(tagCompound -> {
                     if (tagCompound != null) {
-                        NBTTagList list = tagCompound.getTagList(tag, Constants.NBT.TAG_COMPOUND);
-                        for (NBTBase base : list) {
-                            for (Predicate<NBTTagCompound> matcher : subMatchers) {
-                                if (matcher.test((NBTTagCompound) base)) {
+                        ListNBT list = tagCompound.getList(tag, Constants.NBT.TAG_COMPOUND);
+                        for (INBT base : list) {
+                            for (Predicate<CompoundNBT> matcher : subMatchers) {
+                                if (matcher.test((CompoundNBT) base)) {
                                     return true;
                                 }
                             }
@@ -905,7 +909,7 @@ public class CommonRuleEvaluator {
                 if (nbt == null) {
                     return null;
                 }
-                nbtMatchers.add(tagCompound -> nbt.test(tagCompound.getInteger(tag)));
+                nbtMatchers.add(tagCompound -> nbt.test(tagCompound.getInt(tag)));
             }
 
         }
@@ -939,27 +943,27 @@ public class CommonRuleEvaluator {
 
     public void addHelmetCheck(AttributeMap map) {
         List<Predicate<ItemStack>> items = getItems(map.getList(HELMET), logger);
-        addArmorCheck(items, EntityEquipmentSlot.HEAD);
+        addArmorCheck(items, EquipmentSlotType.HEAD);
     }
 
     public void addChestplateCheck(AttributeMap map) {
         List<Predicate<ItemStack>> items = getItems(map.getList(CHESTPLATE), logger);
-        addArmorCheck(items, EntityEquipmentSlot.CHEST);
+        addArmorCheck(items, EquipmentSlotType.CHEST);
     }
 
     public void addLeggingsCheck(AttributeMap map) {
         List<Predicate<ItemStack>> items = getItems(map.getList(LEGGINGS), logger);
-        addArmorCheck(items, EntityEquipmentSlot.LEGS);
+        addArmorCheck(items, EquipmentSlotType.LEGS);
     }
 
     public void addBootsCheck(AttributeMap map) {
         List<Predicate<ItemStack>> items = getItems(map.getList(BOOTS), logger);
-        addArmorCheck(items, EntityEquipmentSlot.FEET);
+        addArmorCheck(items, EquipmentSlotType.FEET);
     }
 
-    private void addArmorCheck(List<Predicate<ItemStack>> items, EntityEquipmentSlot slot) {
+    private void addArmorCheck(List<Predicate<ItemStack>> items, EquipmentSlotType slot) {
         checks.add((event,query) -> {
-            EntityPlayer player = query.getPlayer(event);
+            PlayerEntity player = query.getPlayer(event);
             if (player != null) {
                 ItemStack armorItem = player.getItemStackFromSlot(slot);
                 if (!armorItem.isEmpty()) {
@@ -977,7 +981,7 @@ public class CommonRuleEvaluator {
     public void addHeldItemCheck(AttributeMap map, Key<String> key) {
         List<Predicate<ItemStack>> items = getItems(map.getList(key), logger);
         checks.add((event,query) -> {
-            EntityPlayer player = query.getPlayer(event);
+            PlayerEntity player = query.getPlayer(event);
             if (player != null) {
                 ItemStack mainhand = player.getHeldItemMainhand();
                 if (!mainhand.isEmpty()) {
@@ -995,7 +999,7 @@ public class CommonRuleEvaluator {
     public void addOffHandItemCheck(AttributeMap map) {
         List<Predicate<ItemStack>> items = getItems(map.getList(OFFHANDITEM), logger);
         checks.add((event,query) -> {
-            EntityPlayer player = query.getPlayer(event);
+            PlayerEntity player = query.getPlayer(event);
             if (player != null) {
                 ItemStack offhand = player.getHeldItemOffhand();
                 if (!offhand.isEmpty()) {
@@ -1013,7 +1017,7 @@ public class CommonRuleEvaluator {
     public void addBothHandsItemCheck(AttributeMap map) {
         List<Predicate<ItemStack>> items = getItems(map.getList(BOTHHANDSITEM), logger);
         checks.add((event,query) -> {
-            EntityPlayer player = query.getPlayer(event);
+            PlayerEntity player = query.getPlayer(event);
             if (player != null) {
                 ItemStack offhand = player.getHeldItemOffhand();
                 if (!offhand.isEmpty()) {
@@ -1128,7 +1132,7 @@ public class CommonRuleEvaluator {
     public void addBaubleCheck(AttributeMap map, Key<String> key, Supplier<int[]> slotSupplier) {
         List<Predicate<ItemStack>> items = getItems(map.getList(key), logger);
         checks.add((event,query) -> {
-            EntityPlayer player = query.getPlayer(event);
+            PlayerEntity player = query.getPlayer(event);
             if (player != null) {
                 for (int slot : slotSupplier.get()) {
                     ItemStack stack = compatibility.getBaubleStack(player, slot);

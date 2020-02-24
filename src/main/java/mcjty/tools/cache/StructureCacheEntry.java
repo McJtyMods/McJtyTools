@@ -1,13 +1,15 @@
 package mcjty.tools.cache;
 
+import net.minecraft.world.dimension.DimensionType;
+
 import javax.annotation.Nonnull;
 
 public class StructureCacheEntry {
     @Nonnull private final String structure;
-    private final int dimension;
+    private final DimensionType dimension;
     private final long chunkpos;
 
-    public StructureCacheEntry(@Nonnull String structure, int dimension, long chunkpos) {
+    public StructureCacheEntry(@Nonnull String structure, DimensionType dimension, long chunkpos) {
         this.structure = structure;
         this.dimension = dimension;
         this.chunkpos = chunkpos;
@@ -18,7 +20,7 @@ public class StructureCacheEntry {
         return structure;
     }
 
-    public int getDimension() {
+    public DimensionType getDimension() {
         return dimension;
     }
 
@@ -43,7 +45,7 @@ public class StructureCacheEntry {
     @Override
     public int hashCode() {
         int result = structure.hashCode();
-        result = 31 * result + dimension;
+        result = 31 * result + dimension.hashCode();
         result = 31 * result + (int) (chunkpos ^ (chunkpos >>> 32));
         return result;
     }

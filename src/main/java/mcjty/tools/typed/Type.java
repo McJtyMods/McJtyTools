@@ -1,5 +1,7 @@
 package mcjty.tools.typed;
 
+import net.minecraft.world.dimension.DimensionType;
+
 import javax.annotation.Nonnull;
 import java.util.List;
 
@@ -19,6 +21,7 @@ public final class Type<V> {
     public static final Type<String> STRING = create(String.class);
     public static final Type<Boolean> BOOLEAN = create(Boolean.class);
     public static final Type<String> JSON = create(String.class);
+    public static final Type<DimensionType> DIMENSION_TYPE = create(DimensionType.class);
 
     // Map
     public static final Type<AttributeMap> MAP = create(AttributeMap.class);

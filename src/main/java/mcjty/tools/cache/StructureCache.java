@@ -1,16 +1,12 @@
 package mcjty.tools.cache;
 
-import net.minecraft.nbt.NBTBase;
-import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
-import net.minecraft.world.gen.structure.MapGenStructureData;
+import net.minecraft.world.dimension.DimensionType;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Remember where structures are
@@ -26,7 +22,7 @@ public class StructureCache {
     }
 
     public boolean isInStructure(World world, String structure, BlockPos pos) {
-        int dimension = world.provider.getDimension();
+        DimensionType dimension = world.getDimension().getType();
         ChunkPos cp = new ChunkPos(pos);
         long cplong = ChunkPos.asLong(cp.x, cp.z);
         StructureCacheEntry entry = new StructureCacheEntry(structure, dimension, cplong);
@@ -34,15 +30,16 @@ public class StructureCache {
             return structureCache.get(entry);
         }
 
-        MapGenStructureData data = (MapGenStructureData) world.getPerWorldStorage().getOrLoadData(MapGenStructureData.class, structure);
-        if (data == null) {
-            return false;
-        }
-
-        Set<Long> longs = parseStructureData(data);
-        for (Long l : longs) {
-            structureCache.put(new StructureCacheEntry(structure, dimension, l), true);
-        }
+        // @todo 1.15
+//        MapGenStructureData data = (MapGenStructureData) world.getPerWorldStorage().getOrLoadData(MapGenStructureData.class, structure);
+//        if (data == null) {
+//            return false;
+//        }
+//
+//        Set<Long> longs = parseStructureData(data);
+//        for (Long l : longs) {
+//            structureCache.put(new StructureCacheEntry(structure, dimension, l), true);
+//        }
         if (structureCache.containsKey(entry)) {
             return true;
         } else {
@@ -51,23 +48,23 @@ public class StructureCache {
         }
     }
 
-    private static Set<Long> parseStructureData(MapGenStructureData data) {
-        Set<Long> chunks = new HashSet<>();
-        NBTTagCompound nbttagcompound = data.getTagCompound();
-
-        for (String s : nbttagcompound.getKeySet()) {
-            NBTBase nbtbase = nbttagcompound.getTag(s);
-
-            if (nbtbase.getId() == 10) {
-                NBTTagCompound nbttagcompound1 = (NBTTagCompound) nbtbase;
-
-                if (nbttagcompound1.hasKey("ChunkX") && nbttagcompound1.hasKey("ChunkZ")) {
-                    int i = nbttagcompound1.getInteger("ChunkX");
-                    int j = nbttagcompound1.getInteger("ChunkZ");
-                    chunks.add(ChunkPos.asLong(i, j));
-                }
-            }
-        }
-        return chunks;
-    }
+//    private static Set<Long> parseStructureData(MapGenStructureData data) {
+//        Set<Long> chunks = new HashSet<>();
+//        CompoundNBT nbttagcompound = data.getTagCompound();
+//
+//        for (String s : nbttagcompound.getKeySet()) {
+//            NBTBase nbtbase = nbttagcompound.getTag(s);
+//
+//            if (nbtbase.getId() == 10) {
+//                CompoundNBT nbttagcompound1 = (CompoundNBT) nbtbase;
+//
+//                if (nbttagcompound1.hasKey("ChunkX") && nbttagcompound1.hasKey("ChunkZ")) {
+//                    int i = nbttagcompound1.getInteger("ChunkX");
+//                    int j = nbttagcompound1.getInteger("ChunkZ");
+//                    chunks.add(ChunkPos.asLong(i, j));
+//                }
+//            }
+//        }
+//        return chunks;
+//    }
 }
