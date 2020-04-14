@@ -1,7 +1,6 @@
 package mcjty.tools.typed;
 
 import javax.annotation.Nonnull;
-import java.util.*;
 
 public class AttributeMap {
 
