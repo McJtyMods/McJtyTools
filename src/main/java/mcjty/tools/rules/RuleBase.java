@@ -642,11 +642,14 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         actions.add(event -> {
             EntityLivingBase entityLiving = event.getEntityLiving();
             if (entityLiving != null) {
-                IAttributeInstance entityAttribute = entityLiving.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH);
-                if (entityAttribute != null) {
-                    double newMax = entityAttribute.getBaseValue() * m + a;
-                    entityAttribute.setBaseValue(newMax);
-                    entityLiving.setHealth((float) newMax);
+                if (!entityLiving.getTags().contains("ctrlHealth")) {
+                    IAttributeInstance entityAttribute = entityLiving.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH);
+                    if (entityAttribute != null) {
+                        double newMax = entityAttribute.getBaseValue() * m + a;
+                        entityAttribute.setBaseValue(newMax);
+                        entityLiving.setHealth((float) newMax);
+                        entityLiving.addTag("ctrlHealth");
+                    }
                 }
             }
         });
@@ -658,10 +661,13 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         actions.add(event -> {
             EntityLivingBase entityLiving = event.getEntityLiving();
             if (entityLiving != null) {
-                IAttributeInstance entityAttribute = entityLiving.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED);
-                if (entityAttribute != null) {
-                    double newMax = entityAttribute.getBaseValue() * m + a;
-                    entityAttribute.setBaseValue(newMax);
+                if (!entityLiving.getTags().contains("ctrlSpeed")) {
+                    IAttributeInstance entityAttribute = entityLiving.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED);
+                    if (entityAttribute != null) {
+                        double newMax = entityAttribute.getBaseValue() * m + a;
+                        entityAttribute.setBaseValue(newMax);
+                        entityLiving.addTag("ctrlSpeed");
+                    }
                 }
             }
         });
@@ -686,10 +692,13 @@ public class RuleBase<T extends RuleBase.EventGetter> {
         actions.add(event -> {
             EntityLivingBase entityLiving = event.getEntityLiving();
             if (entityLiving != null) {
-                IAttributeInstance entityAttribute = entityLiving.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE);
-                if (entityAttribute != null) {
-                    double newMax = entityAttribute.getBaseValue() * m + a;
-                    entityAttribute.setBaseValue(newMax);
+                if (!entityLiving.getTags().contains("ctrlDamage")) {
+                    IAttributeInstance entityAttribute = entityLiving.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE);
+                    if (entityAttribute != null) {
+                        double newMax = entityAttribute.getBaseValue() * m + a;
+                        entityAttribute.setBaseValue(newMax);
+                        entityLiving.addTag("ctrlDamage");
+                    }
                 }
             }
         });
